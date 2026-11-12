@@ -7,7 +7,7 @@ Owner role: visual / UI designer. Inputs: 04, 05, decision D-15 (warm, colourful
 1. **Warm, not soft.** Sunny colours, firm content. The look is cheerful; the words are plain and direct.
 2. **A slip must never hide.** It uses colour, a shape and a word, never colour alone.
 3. **Three things, not thirty.** Today shows three tasks. Cards show one decision.
-4. **No faces, no mascot.** She is a voice and a colour, not a drawing of a person.
+4. **One face only: the icon.** She has a robot face on the app icon and nowhere else. Inside the app she is a voice and a colour, not a drawing. No mascot in cards, empty states or notifications.
 5. **Reuse first.** Cards, list rows, dialogs, toasts and icons from Private Folder are reused and restyled with these tokens. New components only where listed in the last section.
 
 ## Colour tokens: light

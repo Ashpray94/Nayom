@@ -68,8 +68,15 @@ An original mark, not based on any existing symbol.
 - A lowercase "n" drawn as an arch, like a doorway or a sunrise, with a small check mark tucked under it.
 - Marigold on cream, with ink for the wordmark. One-colour version in ink.
 - Wordmark in Nunito ExtraBold, lowercase "nayom".
-- App icon: marigold rounded square with a cream arch-n. No face.
+- App icon (D-21, pending final pick): a robot mum's head, hair in a bun, glowing dot-matrix eyes, in calm blue-tinted moss/teal. The arch-n stays as the wordmark's mark inside the app. Light and dark versions. Android needs an adaptive icon (foreground face, background solid).
 - Minimum size 24 px for the mark alone.
+
+## Icon expression rules
+
+- Keen, not scary: level lids, pupils fixed on you, no slanted lids, no dark red or harsh glow.
+- Warm: lifted lower lids (a smile in the eyes), soft brows, one slightly raised ("I know").
+- Digital, not anime and not realistic: dot-matrix or screen eyes, no sparkle highlights, no lashes.
+- Eyes and brows carry the whole expression. No mouth.
 
 ## Illustration style
 

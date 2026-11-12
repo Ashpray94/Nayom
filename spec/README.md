@@ -61,3 +61,4 @@ This repo holds the spec only. The file set follows the usual product order, so 
 | D-18 | Quotes are stored encrypted inside the vault file, so private chat text is never plain text in Obsidian | Chosen by Claude as the safest way to meet D-01 and D-02 |
 | D-19 | Nayom holds you to your own promises and house rules. She does not set goals for you | Chosen by Claude to protect your autonomy |
 | D-20 | Reminders fade as your reliability rises (scaffold fade) | Chosen by Claude, from the "teaches responsibility" requirement |
+| D-21 | App icon is a robot mum's face (eyes carry the expression), blue-tinted moss/teal, light and dark | Your request, 12 Nov. Final pick pending |
