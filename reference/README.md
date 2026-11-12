@@ -1,8 +1,8 @@
 # Nayom reference rules
 
-Executable version of spec 08 (escalation, fade, support rule, output guard), 09 (ledger, vault) and 10 (signals). Plain Node 22, no dependencies.
+Executable version of spec 08 (escalation, fade, praise, support rule, output guard), 09 (ledger, vault), 10 (signals, day shape) and 10 (signals). Plain Node 22, no dependencies.
 
-Run: `npm test` (41 tests). The Kotlin app must give the same answers for the same inputs; port these tests as its vectors.
+Run: `npm test` (44 tests). The Kotlin app must give the same answers for the same inputs; port these tests as its vectors.
 
 ## Where the spec was unclear (decided here, please confirm)
 - SIG-01 says capture needs a time phrase, and also says no time phrase gives the default due. Implemented: a verb of doing plus either a time phrase or an acceptance phrase. No time phrase means default due.
