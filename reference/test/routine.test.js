@@ -7,7 +7,7 @@ import { reduceLedger, parseLedger } from '../src/ledger.js';
 test('wake: initial until 5 nights, then median, corrections weigh 3', () => {
   assert.equal(R.learnWake(['07:00', '07:10']), '07:30');
   assert.equal(R.learnWake(['07:00', '07:10', '07:20', '07:15', '07:05']), '07:10');
-  assert.equal(R.learnWake(['07:00', '07:10', '07:20', '07:15', '07:05'], ['06:30']), '07:05'); // 6 votes of 8 weight pull it earlier
+  assert.equal(R.learnWake(['07:00', '07:10', '07:20', '07:15', '07:05'], ['06:30']), '07:00'); // the correction counts as 3 nights, so the median moves earlier
 });
 
 test('bedtime: after-midnight starts count as late evening', () => {
