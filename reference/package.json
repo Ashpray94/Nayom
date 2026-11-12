@@ -1,0 +1,8 @@
+{
+  "name": "nayom-reference",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Executable reference for Nayom's rules (spec 08, 09, 10). Zero dependencies. The Kotlin app must pass the same vectors.",
+  "scripts": { "test": "node --test test/*.test.js" }
+}
