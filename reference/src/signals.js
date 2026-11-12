@@ -141,3 +141,29 @@ export function reminders({ weeklyKeptShare }) {
   if (run(0.8, 2)) return { twoHour: false, dueTime: true, tier23: true };
   return { twoHour: true, dueTime: true, tier23: true };
 }
+
+// ---- SIG-02 Ask capture (incoming) ----
+export function captureAsk({ text, from, nowMs }) {
+  const n = normalize(text);
+  if (n == null || !hasAny(n, SEEDS.imperative)) return null;
+  const stated = parseDue(n, nowMs);
+  const confidence = Math.round((0.3 + 0.3 + (stated ? 0.25 : 0) + (from ? 0.05 : 0)) * 100) / 100;
+  if (confidence < 0.6) return null; // asks below 0.6 are not written at all
+  return { from: from ?? null, due: stated ? stated.due : defaultDue(nowMs), due_source: stated ? 'stated' : 'default', confidence };
+}
+
+// ---- Tier (D-07): stakes, never reply speed ----
+const CLIENT = ['contract', 'invoice', 'client', 'deliverable', 'proposal', 'scope', 'milestone'];
+const MONEY = ['payment', 'paid', 'budget', 'rs', 'rupees', 'inr', 'fee', 'quote', 'advance'];
+const FORMAL = ['dear', 'regards', 'respected', 'good morning sir', 'good afternoon'];
+export function tierScore({ messages = [], keptCount = 0, missedCount = 0, perWeek = 0 }) {
+  const all = messages.map((m) => normalize(m) ?? '').join(' ');
+  let score = 0;
+  if (hasAny(all, CLIENT)) score += 2;
+  if (hasAny(all, MONEY)) score += 2;
+  if (hasAny(all, FORMAL)) score += 1;
+  score += Math.min(2, messages.filter((m) => parseDue(normalize(m) ?? '', 0)).length); // deadlines named in their messages
+  if (keptCount + missedCount >= 3) score += 1; // history of promises to them
+  if (perWeek >= 10) score += 1;
+  return { score, tier: score >= 5 ? 1 : score >= 2 ? 2 : 3 };
+}
