@@ -218,7 +218,7 @@ class OverlayService : Service() {
         if (kind != "video") lastInput = System.currentTimeMillis()
         if (kind == "typing") lastType = System.currentTimeMillis()
         if (kind == "scroll") { val t = System.currentTimeMillis(); if (t - scrollWin > 90_000) { scrollWin = t; scrolls = 0 }; scrolls++
-            if (scrolls >= 30 && t - lastDoom > 10 * 60_000) { lastDoom = t; scrolls = 0; reactTo("warn", 0)
+            if (scrolls >= 12 && t - lastDoom > 10 * 60_000) { lastDoom = t; scrolls = 0; reactTo("warn", 0)
                 show("That is a lot of swiping. You are doom scrolling. Put it down.", 0, null); setAnger(3)
                 runCatching { Vault.open(this).log("nag", "doomscroll in ${app.nayom.data.Habits.cur}") } } }
         if (headRoot.visibility != View.VISIBLE) return@post
