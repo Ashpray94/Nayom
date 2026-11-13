@@ -39,6 +39,7 @@ class WatcherService : AccessibilityService() {
             AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED -> {
                 if (!prefs.watchTyping || e.isPassword || Blocked.app(p) || p == packageName) return
                 OverlayService.react("typing")
+                runCatching { val b = android.graphics.Rect(); e.source?.getBoundsInScreen(b); if (!b.isEmpty) OverlayService.typing(b.left, b.top, b.right, e.fromIndex + e.addedCount) }
                 val text = e.text.joinToString("").trim()
                 if (text.isEmpty() || text == lastText || Blocked.text(text)) return
                 lastText = text

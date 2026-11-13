@@ -42,6 +42,7 @@ class OverlayService : Service() {
         fun say(text: String, ms: Long = 0, tap: Intent? = null) { instance?.show(text, ms, tap, false) }
         fun appHidden(h: Boolean) { instance?.setAppHidden(h) }
         fun react(kind: String, dir: Int = 0) { instance?.reactTo(kind, dir) }
+        fun typing(l: Int, t: Int, r: Int, caret: Int) { instance?.typingAt(l, t, r, caret) }
         fun start(ctx: Context) { ctx.startForegroundService(Intent(ctx, OverlayService::class.java)) }
         fun command(ctx: Context, action: String) { ctx.startForegroundService(Intent(ctx, OverlayService::class.java).setAction(action)) }
     }
@@ -70,6 +71,8 @@ class OverlayService : Service() {
     private var lastExpectHr = -1
     private var wasteLevel = 0; private var wasteApp = ""
     private var savedY = -1
+    private var savedX = 0
+    private var typeMode = false
     @Volatile private var lastInput = System.currentTimeMillis()
     private var breathing: ValueAnimator? = null
     private var watching = false
@@ -184,9 +187,6 @@ class OverlayService : Service() {
         val dm = resources.displayMetrics; val maxH = dm.heightPixels / 2
         bubbleText.measure(View.MeasureSpec.makeMeasureSpec(dm.widthPixels - dp(32), View.MeasureSpec.EXACTLY), View.MeasureSpec.UNSPECIFIED)
         scroll.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, minOf(bubbleText.measuredHeight, maxH))
-        val typing = System.currentTimeMillis() - lastType < 10_000
-        if (typing) { if (savedY < 0) savedY = headLp.y; headLp.y = dp(36); runCatching { wm.updateViewLayout(headRoot, headLp) } }
-        else restoreHead()
         bubbleRoot.visibility = View.VISIBLE
         placeBubble()
         bubbleRoot.alpha = 0f
@@ -199,17 +199,17 @@ class OverlayService : Service() {
     private fun placeBubble() {
         if (bubbleRoot.visibility != View.VISIBLE) return
         val dm = resources.displayMetrics
-        val below = headLp.y < dm.heightPixels / 2
+        val below = typeMode || headLp.y < dm.heightPixels / 2
         actTop.visibility = if (actionsOn && !below) View.VISIBLE else View.GONE
         actBottom.visibility = if (actionsOn && below) View.VISIBLE else View.GONE
         bubbleRoot.measure(View.MeasureSpec.makeMeasureSpec(dm.widthPixels - dp(32), View.MeasureSpec.EXACTLY), View.MeasureSpec.UNSPECIFIED)
         val h = bubbleRoot.measuredHeight
-        bubbleLp.y = if (below) headLp.y + dp(70) else maxOf(dp(24), headLp.y - h - dp(6))
+        bubbleLp.y = if (typeMode) dp(36) else if (below) headLp.y + dp(70) else maxOf(dp(24), headLp.y - h - dp(6))
         runCatching { wm.updateViewLayout(bubbleRoot, bubbleLp) }
     }
     private val hideBubble = Runnable { dismissBubble() }
-    private fun restoreHead() { if (savedY >= 0) { headLp.y = savedY; savedY = -1; runCatching { wm.updateViewLayout(headRoot, headLp) } } }
-    private fun dismissBubble() { restoreHead(); bubbleRoot.animate().alpha(0f).setDuration(180).withEndAction { bubbleRoot.visibility = View.GONE }.start() }
+    
+    private fun dismissBubble() { bubbleRoot.animate().alpha(0f).setDuration(180).withEndAction { bubbleRoot.visibility = View.GONE }.start() }
 
     // ---- reactions: the head moves differently for each thing you do
 
@@ -225,7 +225,7 @@ class OverlayService : Service() {
         if (watching && kind != "video") unwatch()
         head.pivotX = head.width / 2f; head.pivotY = head.height.toFloat()
         when (kind) {
-            "typing" -> head.animate().rotation(-9f).setDuration(110).withEndAction { head.animate().rotation(9f).setDuration(160).withEndAction { head.animate().rotation(0f).setDuration(120).start() }.start() }.start()
+            "typing" -> {}
             "scroll" -> head.animate().translationY(if (dir >= 0) dp(7).toFloat() else -dp(7).toFloat()).setDuration(120).withEndAction { head.animate().translationY(0f).setDuration(220).setInterpolator(OvershootInterpolator(2f)).start() }.start()
             "click" -> head.animate().scaleX(0.84f).scaleY(0.84f).setDuration(70).withEndAction { head.animate().scaleX(1.12f).scaleY(1.12f).setDuration(120).withEndAction { head.animate().scaleX(1f).scaleY(1f).setDuration(120).start() }.start() }.start()
             "notify" -> head.animate().translationY(-dp(18).toFloat()).setDuration(120).withEndAction { head.animate().translationY(0f).setDuration(520).setInterpolator(BounceInterpolator()).start() }.start()
@@ -240,6 +240,26 @@ class OverlayService : Service() {
             2 -> android.graphics.PorterDuffColorFilter(0xFFFF8A75.toInt(), android.graphics.PorterDuff.Mode.MULTIPLY)
             else -> android.graphics.PorterDuffColorFilter(0xFFFF4D3A.toInt(), android.graphics.PorterDuff.Mode.MULTIPLY) }
         if (level >= 2) reactTo("warn", 0)
+    }
+    /** She sits on the text box and looks toward the cursor while you type; looks back at you when you stop. */
+    fun typingAt(l: Int, t: Int, r: Int, caret: Int) = ui.post {
+        if (headRoot.visibility != View.VISIBLE) return@post
+        val dm = resources.displayMetrics
+        if (!typeMode) { typeMode = true; savedX = headLp.x; savedY = headLp.y }
+        val cx = (l + r) / 2
+        headLp.x = (dm.widthPixels - cx - dp(32)).coerceIn(0, dm.widthPixels - dp(64)); headLp.y = maxOf(dp(8), t - dp(72))
+        runCatching { wm.updateViewLayout(headRoot, headLp) }
+        val caretX = (l + dp(16) + caret * dp(9)).coerceAtMost(r - dp(8))
+        val look = ((caretX - cx).toFloat() / maxOf(1, (r - l) / 2)).coerceIn(-1f, 1f)
+        head.cameraDistance = 12000f * resources.displayMetrics.density
+        head.animate().rotationY(look * 28f).translationX(look * dp(5)).setDuration(140).start()
+        ui.removeCallbacks(backToMe); ui.postDelayed(backToMe, 1800)
+    }
+    private val backToMe = Runnable {
+        if (!typeMode) return@Runnable
+        typeMode = false
+        head.animate().rotationY(0f).translationX(0f).setDuration(350).start()
+        headLp.x = savedX; headLp.y = savedY; runCatching { wm.updateViewLayout(headRoot, headLp) }
     }
     private fun unwatch() { watching = false }
 
