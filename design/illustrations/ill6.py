@@ -24,12 +24,12 @@ def pth(pts): return pts
 def solid_eye(h, mirror, droop=0):
     """Eye and brow in one stroke: a round pupil near the nose whose comma tail arcs up and out over it like an eyebrow."""
     X=(lambda x: L(x)) if mirror else (lambda x: x)
-    r=2.3+h*.24; cx=101.0; cy=66.5; lift=60.2-h*.25
-    return (f"M{X(83.5)} 63.6C{X(89)} {lift-1.2:.1f} {X(96)} {lift-1.4:.1f} {X(cx-r*.6)} {cy-r*.95:.1f}"
+    r=3.0+h*.2; cx=101.0; cy=67.2; lift=60.6-h*.1
+    return (f"M{X(83.5)} 67.2C{X(89)} {lift-.6:.1f} {X(96)} {lift-1.2:.1f} {X(cx-r*.6)} {cy-r*.95:.1f}"
             f"C{X(cx+r*.2)} {cy-r*1.05:.1f} {X(cx+r)} {cy-r*.6:.1f} {X(cx+r)} {cy:.1f}"
             f"C{X(cx+r)} {cy+r*.7:.1f} {X(cx+r*.55)} {cy+r:.1f} {X(cx)} {cy+r:.1f}"
             f"C{X(cx-r*.75)} {cy+r:.1f} {X(cx-r*1.05)} {cy+r*.3:.1f} {X(cx-r*1.05)} {cy-r*.1:.1f}"
-            f"C{X(97)} {lift+2.6:.1f} {X(90)} {lift+2.0:.1f} {X(83.5)} 63.6Z")
+            f"C{X(97)} {lift+2.4:.1f} {X(90)} {lift+2.6:.1f} {X(83.5)} 67.2Z")
 def solid_brow(yo,yi,mirror,t=2.4,arch=4):
     X=(lambda x: L(x)) if mirror else (lambda x: x)
     return (f"M{X(85)} {yo}C{X(91)} {yo-arch} {X(98)} {yi-arch} {X(104)} {yi}"
@@ -37,7 +37,7 @@ def solid_brow(yo,yi,mirror,t=2.4,arch=4):
 MOUTHS={"smile":"M103 84C107 88 114 88 118 83C114 86.4 107 86.4 103 84Z","smirk":"M103 85C107 88.4 114 88 120 82C114 85.6 107 86.2 103 85Z",
         "soft":"M104 85C108 87.6 113 87.6 117 84.6C113 86.4 108 86.4 104 85Z","flat":"M104 86.5C109 85.6 113 85.8 117 84.4C113 86.8 109 87.4 104 86.5Z",
         "line":"M105 86C109 85.4 112 85.4 115 86C112 86.6 109 86.6 105 86Z"}
-TILT={"stern":11,"worried":-9,"wry":4,"tender":-2}
+TILT={"stern":6,"worried":-7,"wry":2,"tender":-3,"serene":-3,"watchful":-4}
 def face_parts(op,dx,dy,b,mouth,r=3.4,tilt=0):
     """No eyebrows (D-30): expression = eye openness, eye tilt, mouth."""
     h=2+op*7
