@@ -20,15 +20,16 @@ class WatcherService : AccessibilityService() {
     private var lastText = ""
     private var lastScrollY = 0
     private var gStart = 0L; private var gLast = 0L; private var gY0 = 0; private var gY = 0; private var gIdx0 = -1; private var gIdx = -1
+    private var gDelta = 0; private var gEvents = 0
     private val endGesture = Runnable { endGesture() }
     private fun endGesture() {
-        val dm = resources.displayMetrics; val net = kotlin.math.abs(gY - gY0); val dur = maxOf(60L, gLast - gStart)
+        val dm = resources.displayMetrics; val net = maxOf(kotlin.math.abs(gY - gY0), kotlin.math.abs(gDelta)); val dur = maxOf(60L, gLast - gStart)
         val screens = net.toFloat() / dm.heightPixels; val speed = screens * 1000f / dur
         val changed = gIdx0 >= 0 && gIdx != gIdx0
         val dir = if (gY >= gY0) 1 else -1
         val swipe = changed || (screens >= 0.35f && speed >= 0.8f)
         if (swipe) OverlayService.react("scroll", dir) else if (net > dp(40)) OverlayService.react("nod", dir)
-        runCatching { Vault.open(this).log("gesture", "${if (swipe) "swipe" else "drag"} ${(screens * 100).toInt()}% in ${dur}ms idx=${gIdx0}>${gIdx} app=${OverlayService.fgPkg}") }
+        runCatching { Vault.open(this).log("gesture", "${if (swipe) "swipe" else "drag"} ${(screens * 100).toInt()}% in ${dur}ms idx=${gIdx0}>${gIdx} events=$gEvents dY=$gDelta y=${gY0}>${gY} app=${OverlayService.fgPkg}") }
     }
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
@@ -49,8 +50,9 @@ class WatcherService : AccessibilityService() {
                 //   SWIPE = a flick that changed the item (page/reel index changed) or travelled >= 35% of the screen at >= 0.8 screens/s
                 //   DRAG  = anything slower or shorter, including moving and coming back. Drags never count.
                 val now = System.currentTimeMillis(); val y = e.scrollY
-                if (now - gLast > 400) { gStart = now; gY0 = y; gIdx0 = e.fromIndex }
-                gLast = now; gY = y; gIdx = e.fromIndex
+                if (now - gLast > 400) { gStart = now; gY0 = y; gIdx0 = e.fromIndex; gDelta = 0; gEvents = 0 }
+                if (android.os.Build.VERSION.SDK_INT >= 28) gDelta += e.scrollDeltaY
+                gEvents++; gLast = now; gY = y; gIdx = e.fromIndex
                 ui.removeCallbacks(endGesture); ui.postDelayed(endGesture, 400)
             }
             AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED -> OverlayService.react("notify")
