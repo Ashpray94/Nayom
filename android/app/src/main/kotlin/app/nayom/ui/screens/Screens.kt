@@ -111,7 +111,7 @@ fun NewPromiseScreen(st: AppState, r: Route.NewPromise) {
     var who by remember { mutableStateOf(r.who) }; var what by remember { mutableStateOf(r.what) }
     val opts = listOf("In 1 hour" to st.now.plusHours(1), "Tonight 21:00" to st.now.withHour(21).withMinute(0).withSecond(0),
         "Tomorrow 10:00" to st.now.plusDays(1).withHour(10).withMinute(0).withSecond(0), "In 3 days" to st.now.plusDays(3))
-    var due by remember { mutableStateOf(1) }
+    var due by remember { mutableStateOf(r.due.coerceIn(0, 3)) }
     Screen(actions = {
         Button("Save promise", who.isNotBlank() && what.isNotBlank(), Modifier.fillMaxWidth()) {
             if (who.isNotBlank() && what.isNotBlank()) st.addPromise(who, what, opts[due].second) }
@@ -324,10 +324,12 @@ fun PermissionCentre(st: AppState) {
     }
     if (!access) Text("If Allow is greyed out: App info for Nayom, three-dot menu, Allow restricted settings. Then try again.", style = NayomType.body, color = colors.muted)
     var on by remember { mutableStateOf(prefs.avatarOn) }
-    Button(if (on) "Hide the floating head" else "Show the floating head", false, Modifier.fillMaxWidth()) {
-        on = !on; prefs.avatarOn = on
-        if (on && overlay) app.nayom.service.OverlayService.start(ctx) else app.nayom.service.OverlayService.stop(ctx)
+    var hidden by remember { mutableStateOf(prefs.headHidden) }
+    Button(if (hidden) "Show the floating head" else "Hide the floating head", false, Modifier.fillMaxWidth()) {
+        hidden = !hidden; prefs.headHidden = hidden
+        if (overlay) app.nayom.service.OverlayService.command(ctx, if (hidden) "HIDE" else "SHOW")
     }
+    Text("Hiding only clears the screen. Nayom keeps watching.", style = NayomType.body, color = colors.muted)
 }
 
 @Composable
@@ -336,3 +338,12 @@ private fun PermRow(label: String, on: Boolean, cta: String, go: () -> Unit) =
         Column(Modifier.weight(1f)) { Text(label, style = NayomType.body, color = colors.ink) }
         if (on) Label("On") else Box(Modifier.clickable(onClick = go).padding(8.dp)) { Label(cta) }
     }
+
+
+@Composable
+fun InboxScreen(st: AppState) = Screen(actions = { Button("Back", false, Modifier.fillMaxWidth()) { st.back() } }, scroll = true) {
+    Title("Messages")
+    val msgs = remember { st.store.inboxToday() }
+    if (msgs.isEmpty()) Text("Nothing has reached this phone yet today. Check Settings: See my messages.", style = NayomType.body, color = colors.muted)
+    msgs.forEach { m -> Card { Label("${m.time}  ${m.app}  ${m.from}"); Spacer(Modifier.height(6.dp)); Text(m.text, style = NayomType.body, color = colors.ink) } }
+}

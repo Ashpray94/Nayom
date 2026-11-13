@@ -12,7 +12,7 @@ import java.time.ZonedDateTime
 sealed interface Route {
     data object Home : Route
     data class PromiseDetail(val id: String) : Route
-    data class NewPromise(val who: String = "", val what: String = "") : Route
+    data class NewPromise(val who: String = "", val what: String = "", val due: Int = 1) : Route
     data object AskIn : Route
     data class Gate(val askId: String) : Route
     data class Debrief(val id: String) : Route
@@ -20,6 +20,7 @@ sealed interface Route {
     data object Evening : Route
     data object Setup : Route
     data object Activity : Route
+    data object Inbox : Route
     data class Onboarding(val step: Int = 0) : Route
 }
 

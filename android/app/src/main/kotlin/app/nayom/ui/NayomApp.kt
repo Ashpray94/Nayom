@@ -44,6 +44,7 @@ fun NayomApp(st: AppState = viewModel()) {
                 Route.Setup -> { st.tab = 4; st.back() }
                 is Route.Onboarding -> OnboardingScreen(st, r.step)
                 Route.Activity -> ActivityScreen(st)
+                Route.Inbox -> InboxScreen(st)
             }
         }
         if (st.route == Route.Home && st.onboarded) Row(Modifier.fillMaxWidth().background(colors.surface).navigationBarsPadding().padding(top = 12.dp, bottom = 8.dp)) {

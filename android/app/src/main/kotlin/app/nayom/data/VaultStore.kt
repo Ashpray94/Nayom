@@ -78,6 +78,11 @@ class VaultStore(val root: File, private val dev: String = "ph", private val zon
         f.appendText("- ${now.format(DateTimeFormatter.ofPattern("HH:mm:ss"))} | $app | ${text.trim().replace("\n", " ")}\n")
     }
 
+    data class Msg(val time: String, val app: String, val from: String, val text: String)
+    fun inboxToday(): List<Msg> = File(dir("inbox/$dev"), clock().toLocalDate().toString() + ".md").takeIf { it.exists() }?.readLines().orEmpty()
+        .filter { it.startsWith("- ") }.map { it.removePrefix("- ").split(" | ", limit = 4) }.filter { it.size == 4 }
+        .map { Msg(it[0], it[1], it[2], it[3]) }.reversed()
+
     // ---- inbox: messages that reached the phone (notification listener). inbox/<dev>/YYYY-MM-DD.md
     fun inbox(app: String, title: String, text: String) {
         val now = clock()

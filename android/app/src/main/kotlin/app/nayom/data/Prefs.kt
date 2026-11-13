@@ -10,6 +10,8 @@ class Prefs(ctx: Context) {
         set(v) = p.edit().putStringSet("hideIn", v).apply()
     var avatarOn: Boolean
         get() = p.getBoolean("avatarOn", true); set(v) = p.edit().putBoolean("avatarOn", v).apply()
+    var headHidden: Boolean
+        get() = p.getBoolean("headHidden", false); set(v) = p.edit().putBoolean("headHidden", v).apply()
     var watchTyping: Boolean
         get() = p.getBoolean("watchTyping", true); set(v) = p.edit().putBoolean("watchTyping", v).apply()
     var avatarY: Int

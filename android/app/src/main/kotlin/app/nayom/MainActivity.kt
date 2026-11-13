@@ -27,8 +27,9 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) { super.onNewIntent(intent); handle(intent) }
 
     private fun handle(i: Intent?) {
+        if (i?.getStringExtra("route") == "inbox") { if (st.onboarded) st.route = Route.Inbox; i.removeExtra("route"); return }
         val what = i?.getStringExtra("what") ?: return
-        if (st.onboarded) st.route = Route.NewPromise(i.getStringExtra("who").orEmpty(), what)
+        if (st.onboarded) st.route = Route.NewPromise(i.getStringExtra("who").orEmpty(), what, i.getIntExtra("due", 1))
         i.removeExtra("what")
     }
 
