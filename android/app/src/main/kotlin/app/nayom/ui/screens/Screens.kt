@@ -57,6 +57,7 @@ fun TodayScreen(st: AppState) = Screen(actions = {
     val miss = st.unhandledMiss
     if (miss != null) {
         Card {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { Illustration("face_stern", colors.berry, 150) }
             Text("MISSED", style = NayomType.status, color = colors.berry)
             Spacer(Modifier.height(12.dp))
             Text("${miss.person}'s ${miss.what.lowercase()} was due at ${miss.due.format(hm)}.", style = NayomType.title, color = colors.ink)
@@ -190,8 +191,9 @@ fun GateScreen(st: AppState, askId: String) {
         Button("Yes", false, Modifier.fillMaxWidth()) { if (!locked) go(Decision.Yes) }
         Spacer(Modifier.height(4.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { Label(if (locked) "Yes and Later unlock in $left s" else "Choose") }
-    }) {
-        Title("Before you say yes")
+    }, scroll = true) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { Illustration("face_wry", colors.berry, 170) }
+    Title("Before you say yes")
         Text("${a.from} asks: ${a.what}.", style = NayomType.title, color = colors.ink)
         val clash = st.open.firstOrNull { it.due.isBefore(st.now.plusHours(24)) }
         if (clash != null) Card { IconLine(R.drawable.ic_clock, colors.amber, "Pushes out ${clash.person}'s ${clash.what.lowercase()}, due ${clash.due.format(hm)}.") }
@@ -206,6 +208,7 @@ fun DebriefScreen(st: AppState, id: String) {
         Button("Save", why.isNotBlank(), Modifier.fillMaxWidth()) { if (why.isNotBlank()) st.debrief(id, why) }
         Button("Back", false, Modifier.fillMaxWidth()) { st.back() }
     }, scroll = true) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { Illustration("face_worried", colors.sky, 170) }
         Title("Debrief")
         Text("What got in the way of ${p?.what?.lowercase() ?: "it"}?", style = NayomType.title, color = colors.ink)
         Field("One line, honest", why, { why = it }, false, 120)
