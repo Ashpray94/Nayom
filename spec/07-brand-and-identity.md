@@ -66,9 +66,9 @@ Even at L3 she is never cruel. See the banned list in 13.
 An original mark, not based on any existing symbol.
 
 - A lowercase "n" drawn as an arch, like a doorway or a sunrise, with a small check mark tucked under it.
-- Marigold on cream, with ink for the wordmark. One-colour version in ink.
+- Teal on the pale background, with ink for the wordmark. One-colour version in ink.
 - Wordmark in Nunito ExtraBold, lowercase "nayom".
-- App icon (D-21, pending final pick): a robot mum's head, hair in a bun, glowing dot-matrix eyes, in calm blue-tinted moss/teal. The arch-n stays as the wordmark's mark inside the app. Light and dark versions. Android needs an adaptive icon (foreground face, background solid).
+- App icon (D-21, light version is the main one per D-23): a robot mum's head, hair in a bun, glowing dot-matrix eyes, in calm blue-tinted moss/teal. The arch-n stays as the wordmark's mark inside the app. Light and dark versions. Android needs an adaptive icon (foreground face, background solid).
 - Minimum size 24 px for the mark alone.
 
 ## Icon expression rules
@@ -80,7 +80,7 @@ An original mark, not based on any existing symbol.
 
 ## Illustration style
 
-Simple sun, seed and arch shapes in the palette. Flat, no outlines, no people, no animals. Used in empty states and the setup screens only.
+Simple sun, seed and arch shapes in the teal family. Flat, no outlines, no people, no animals. Used in empty states and the setup screens only.
 
 ## Where the brand shows
 

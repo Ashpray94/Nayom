@@ -6,11 +6,11 @@
 - Private Folder, branch `lan-only-mode` (not merged, not compiled): one switch blocks relay, update checks and internet peers. Default on.
 - Icon: robot-mum, light and dark, plus Android adaptive layers and themed monochrome (sent as files).
 
+## Decided (13 Nov)
+Light is the default icon and app mode (D-23). UI palette is the teal family (D-22, tokens in `spec/tokens.json`). LAN-only is on by default (D-24).
+
 ## Needs you
-1. Icon: light or dark as the main one.
-2. Palette: the icon is blue-tinted teal; the UI spec is marigold and cream. Keep marigold in the app, or move the UI to the teal family?
-3. LAN-only default on (as built) or off?
-4. Hinglish copy in spec 13 needs your read.
+- Nothing blocking. You have not read the spec yet, so Hinglish copy review waits until the screens exist; it will be reviewed on the screens, not in md.
 
 ## Spec points the reference had to decide (please confirm)
 See `reference/README.md`: capture rule when there is no time phrase, confidence scoring, repeated-letter squeeze.
@@ -21,4 +21,4 @@ See `reference/README.md`: capture rule when there is no time phrase, confidence
 ## Next, in order
 1. Merge `lan-only-mode` after `flutter test` on your PC.
 2. Nayom Phone shell (Android, Kotlin): vault read/write, Today screen, gate overlay. Port `/reference` tests as vectors.
-3. Key screens in design once palette is decided.
+3. Key screens in the teal palette (Today, gate card, slip card, evening sheet, setup).
