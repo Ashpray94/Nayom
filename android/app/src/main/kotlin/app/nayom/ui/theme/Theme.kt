@@ -32,7 +32,8 @@ val Cormorant = FontFamily(
 /** Type scale from spec/tokens.json (D-25). Roman for firm moments, italic for warm. */
 object NayomType {
     val hero = TextStyle(fontFamily = Cormorant, fontWeight = FontWeight.Medium, fontSize = 72.sp, lineHeight = 70.sp)
-    val heading = TextStyle(fontFamily = Cormorant, fontWeight = FontWeight.Medium, fontSize = 40.sp, lineHeight = 42.sp)
+    val heading = TextStyle(fontFamily = Cormorant, fontWeight = FontWeight.Medium, fontSize = 40.sp, lineHeight = 44.sp)
+    val headingWarm = heading.copy(fontStyle = FontStyle.Italic)
     val display = TextStyle(fontFamily = Cormorant, fontWeight = FontWeight.Medium, fontStyle = FontStyle.Italic, fontSize = 46.sp, lineHeight = 46.sp)
     val numeral = TextStyle(fontFamily = Sora, fontWeight = FontWeight.ExtraLight, fontSize = 56.sp)
     val title = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = 22.sp, lineHeight = 30.sp)

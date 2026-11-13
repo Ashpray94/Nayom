@@ -40,3 +40,21 @@ fun Row2(title: String, sub: String, trailing: String? = null, onClick: (() -> U
         Column(Modifier.weight(1f)) { Text(title, style = NayomType.body, color = colors.ink); Text(sub, style = NayomType.body.copy(fontSize = 13.sp), color = colors.muted) }
         if (trailing != null) Label(trailing)
     }
+
+/** Screen heading: short serif word. Roman = firm, italic = warm. */
+@Composable
+fun Title(text: String, warm: Boolean = false, color: androidx.compose.ui.graphics.Color = colors.ink) =
+    Text(text, style = if (warm) NayomType.headingWarm else NayomType.heading, color = color)
+
+/** Empty / celebration state: one icon tile, one short serif line, one plain sentence. Action sits in the screen's bottom actions. */
+@Composable
+fun Empty(icon: Int, tint: androidx.compose.ui.graphics.Color, line: String, sentence: String, modifier: Modifier = Modifier) =
+    Column(modifier.fillMaxWidth().padding(vertical = 24.dp), horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Box(Modifier.size(72.dp).clip(RoundedCornerShape(24.dp)).background(tint.copy(alpha = .14f)), androidx.compose.ui.Alignment.Center) {
+            Icon(icon, tint, 36)
+        }
+        Text(line, style = NayomType.display.copy(fontSize = 40.sp, lineHeight = 44.sp), color = colors.ink, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        Text(sentence, style = NayomType.body, color = colors.muted, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 24.dp))
+    }

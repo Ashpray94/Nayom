@@ -48,8 +48,8 @@ fun TodayScreen(st: AppState) = Screen(actions = {
     Button("Someone asked me", st.next == null && st.unhandledMiss == null, Modifier.fillMaxWidth()) { st.route = Route.AskIn }
 }, scroll = true) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        Label("Today")
-        Box(Modifier.clickable { st.route = Route.Setup }) { Label("Setup") }
+        Title("Today")
+        Box(Modifier.clickable { st.route = Route.Setup }.padding(top = 16.dp)) { Label("Setup") }
     }
     val miss = st.unhandledMiss
     if (miss != null) {
@@ -77,11 +77,8 @@ fun TodayScreen(st: AppState) = Screen(actions = {
         }
         Card { IconLine(R.drawable.ic_promises, colors.teal, "${st.dueSoon} due in 48 h") }
     } else if (miss == null) {
-        Card {
-            Label("Nothing due")
-            Spacer(Modifier.height(8.dp))
-            Text("No open promises. Add one in Promises when you say yes to someone.", style = NayomType.body, color = colors.muted)
-        }
+        if (st.day.kept > 0) Empty(R.drawable.ic_check, colors.teal, "All kept.", "${st.day.kept} kept today. Nothing is owed. Rest well.")
+        else Empty(R.drawable.ic_today, colors.teal, "Clear sky.", "No promises due. When you say yes to someone, add it in Promises.")
     }
     Box(Modifier.clickable { st.route = Route.Evening }) { Label("Evening sheet") }
 }
@@ -90,9 +87,9 @@ fun TodayScreen(st: AppState) = Screen(actions = {
 fun PromisesScreen(st: AppState) = Screen(actions = {
     Button("New promise", true, Modifier.fillMaxWidth()) { st.route = Route.NewPromise() }
 }, scroll = true) {
-    Label("Promises")
+    Title("Promises")
     val open = st.open
-    if (open.isEmpty()) Text("Nothing open.", style = NayomType.body, color = colors.muted)
+    if (open.isEmpty()) Empty(R.drawable.ic_promises, colors.teal, "Nothing owed.", "Every yes you give lives here until you keep it.")
     else Card { open.forEach { p -> Row2(p.what, "${p.person} · ${p.due.format(dm)}", countdown(p.due, st.now).take(5)) { st.route = Route.PromiseDetail(p.id) } } }
     val past = st.promises.filter { it.status != Status.Open }.takeLast(8).reversed()
     if (past.isNotEmpty()) {
@@ -112,7 +109,7 @@ fun NewPromiseScreen(st: AppState, r: Route.NewPromise) {
             if (who.isNotBlank() && what.isNotBlank()) st.addPromise(who, what, opts[due].second) }
         Button("Cancel", false, Modifier.fillMaxWidth()) { st.back() }
     }, scroll = true) {
-        Label("New promise")
+        Title("New promise")
         Field("To whom", who, { who = it }); Field("What", what, { what = it })
         Label("By when")
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -131,7 +128,7 @@ fun PromiseDetailScreen(st: AppState, id: String) {
         Button("Release", false, Modifier.fillMaxWidth()) { st.mark(id, Status.Released) }
         Button("Back", false, Modifier.fillMaxWidth()) { st.back() }
     }) {
-        Label("Promise")
+        Title("Promise")
         Text(p.what, style = NayomType.title, color = colors.ink)
         Card {
             Text(countdown(p.due, st.now), style = NayomType.numeral, color = if (p.due.isBefore(st.now)) colors.berry else colors.ink)
@@ -141,9 +138,11 @@ fun PromiseDetailScreen(st: AppState, id: String) {
 }
 
 @Composable
-fun PeopleScreen(st: AppState) = Screen(scroll = true) {
-    Label("People")
-    if (st.people.isEmpty()) Text("People appear when you add a promise or an ask.", style = NayomType.body, color = colors.muted)
+fun PeopleScreen(st: AppState) = Screen(actions = {
+    if (st.people.isEmpty()) Button("New promise", true, Modifier.fillMaxWidth()) { st.route = Route.NewPromise() }
+}, scroll = true) {
+    Title("People")
+    if (st.people.isEmpty()) Empty(R.drawable.ic_people, colors.sky, "No one yet.", "People appear here once you add a promise or log an ask.")
     else Card { st.people.forEach { (n, c) -> Row2(n, if (c == 0) "Nothing open" else "$c open", null) } }
 }
 
@@ -151,8 +150,8 @@ fun PeopleScreen(st: AppState) = Screen(scroll = true) {
 fun NotesScreen(st: AppState) = Screen(actions = {
     Button("New note", true, Modifier.fillMaxWidth()) { st.route = Route.Note(null) }
 }, scroll = true) {
-    Label("Notes")
-    if (st.notes.isEmpty()) Text("Markdown files in your vault show up here.", style = NayomType.body, color = colors.muted)
+    Title("Notes")
+    if (st.notes.isEmpty()) Empty(R.drawable.ic_notes, colors.amber, "Blank page.", "Markdown files in your vault show up here. Write the first one.")
     else Card { st.notes.forEach { n -> Row2(n.name, n.file.parentFile?.name ?: "", null) { st.route = Route.Note(n.file) } } }
 }
 
@@ -161,14 +160,14 @@ fun NoteScreen(st: AppState, r: Route.Note) {
     if (r.file != null) {
         val text = remember(r.file) { r.file.readText() }
         Screen(actions = { Button("Back", false, Modifier.fillMaxWidth()) { st.back() } }, scroll = true) {
-            Label("Note"); Text(text, style = NayomType.body, color = colors.ink)
+            Title("Note"); Text(text, style = NayomType.body, color = colors.ink)
         }
     } else {
         var t by remember { mutableStateOf("") }; var b by remember { mutableStateOf("") }
         Screen(actions = {
             Button("Save", t.isNotBlank(), Modifier.fillMaxWidth()) { if (t.isNotBlank()) st.saveNote(t, b) }
             Button("Cancel", false, Modifier.fillMaxWidth()) { st.back() }
-        }, scroll = true) { Label("New note"); Field("Title", t, { t = it }); Field("Note", b, { b = it }, false, 160) }
+        }, scroll = true) { Title("New note"); Field("Title", t, { t = it }); Field("Note", b, { b = it }, false, 160) }
     }
 }
 
@@ -179,7 +178,7 @@ fun AskInScreen(st: AppState) {
         Button("Continue", who.isNotBlank() && what.isNotBlank(), Modifier.fillMaxWidth()) {
             if (who.isNotBlank() && what.isNotBlank()) { val id = st.ask(who, what); st.route = Route.Gate(id) } }
         Button("Cancel", false, Modifier.fillMaxWidth()) { st.back() }
-    }, scroll = true) { Label("Someone asked"); Field("Who", who, { who = it }); Field("What do they want", what, { what = it }) }
+    }, scroll = true) { Title("Someone asked"); Field("Who", who, { who = it }); Field("What do they want", what, { what = it }) }
 }
 
 /** I-01 Gate. Yes and Later unlock after 8 s. */
@@ -197,7 +196,7 @@ fun GateScreen(st: AppState, askId: String) {
         Spacer(Modifier.height(4.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { Label(if (locked) "Yes and Later unlock in $left s" else "Choose") }
     }) {
-        Label("Before you say yes")
+        Title("Before you say yes")
         Text("${a.from} asks: ${a.what}.", style = NayomType.title, color = colors.ink)
         val clash = st.open.firstOrNull { it.due.isBefore(st.now.plusHours(24)) }
         if (clash != null) Card { IconLine(R.drawable.ic_clock, colors.amber, "Pushes out ${clash.person}'s ${clash.what.lowercase()}, due ${clash.due.format(hm)}.") }
@@ -212,7 +211,7 @@ fun DebriefScreen(st: AppState, id: String) {
         Button("Save", why.isNotBlank(), Modifier.fillMaxWidth()) { if (why.isNotBlank()) st.debrief(id, why) }
         Button("Back", false, Modifier.fillMaxWidth()) { st.back() }
     }, scroll = true) {
-        Label("Debrief")
+        Title("Debrief")
         Text("What got in the way of ${p?.what?.lowercase() ?: "it"}?", style = NayomType.title, color = colors.ink)
         Field("One line, honest", why, { why = it }, false, 120)
     }
@@ -225,7 +224,8 @@ fun EveningScreen(st: AppState) = Screen(actions = {
 }) {
     Label("Evening")
     Text("Phone down.", style = NayomType.hero, color = colors.ink)
-    Card {
+    if (st.day == Day(0, 0, 0, 0, 0)) Empty(R.drawable.ic_today, colors.teal, "A quiet day.", "Nothing kept, missed or moved today.")
+    else Card {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             listOf(Triple("Kept", st.day.kept, colors.teal), Triple("Missed", st.day.missed, colors.berry), Triple("Moved", st.day.moved, colors.ink),
                 Triple("Reflex yes", st.day.reflexYes, colors.ink)).forEach { (k, v, c) ->
@@ -235,13 +235,12 @@ fun EveningScreen(st: AppState) = Screen(actions = {
             }
         }
     }
-    Text("${st.day.gated} asks went through the gate today.", style = NayomType.body, color = colors.muted)
+    if (st.day.gated > 0) Text("${st.day.gated} asks went through the gate today.", style = NayomType.body, color = colors.muted)
 }
 
 @Composable
 fun SetupScreen(st: AppState) = Screen(actions = { Button("Back", false, Modifier.fillMaxWidth()) { st.back() } }, scroll = true) {
-    Label("Setup")
-    Text("What stays private", style = NayomType.title, color = colors.ink)
+    Title("Setup")
     Card { IconLine(R.drawable.ic_shield, colors.sky, "Never read: banking, OTP, authenticator and password apps.") }
     Card { IconLine(R.drawable.ic_check, colors.teal, "Everything is saved as files on this phone. Nothing leaves it.") }
     Card { Label("Vault folder"); Spacer(Modifier.height(8.dp)); Text(st.store.root.absolutePath, style = NayomType.body, color = colors.muted) }
