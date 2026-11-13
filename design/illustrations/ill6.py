@@ -22,11 +22,13 @@ BODY2="M121 102C128 114 134 128 138 144C144 162 152 174 162 178"
 def L(x): return 220-x   # mirror about the head's centre line
 def pth(pts): return pts
 def solid_eye(h, mirror, droop=0):
+    """A horizontal quote mark: round pupil end toward the nose, tapering tail to the outer corner."""
     X=(lambda x: L(x)) if mirror else (lambda x: x)
-    # solid leaf: outer corner a touch lower, flatter top when the lid is heavy
-    top=h*.55
-    return (f"M{X(86)} {66+droop}C{X(91)} {62-top+droop*.5:.1f} {X(99)} {61-top:.1f} {X(105)} 63"
-            f"C{X(100)} {63+h*.7:.1f} {X(92)} {67+h*.5+droop*.3:.1f} {X(86)} {66+droop}Z")
+    r=1.6+h*.42; cy=64.6
+    return (f"M{X(86)} 66.8C{X(91)} {cy-r-.6:.1f} {X(96)} {cy-r:.1f} {X(100.5)} {cy-r:.1f}"
+            f"C{X(103.6)} {cy-r:.1f} {X(106)} {cy-r*.4:.1f} {X(106)} {cy}"
+            f"C{X(106)} {cy+r*.6:.1f} {X(103.6)} {cy+r:.1f} {X(100.5)} {cy+r:.1f}"
+            f"C{X(96)} {cy+r:.1f} {X(91)} 67.4 {X(86)} 66.8Z")
 def solid_brow(yo,yi,mirror,t=2.4,arch=4):
     X=(lambda x: L(x)) if mirror else (lambda x: x)
     return (f"M{X(85)} {yo}C{X(91)} {yo-arch} {X(98)} {yi-arch} {X(104)} {yi}"
@@ -34,9 +36,11 @@ def solid_brow(yo,yi,mirror,t=2.4,arch=4):
 MOUTHS={"smile":"M103 84C107 88 114 88 118 83C114 86.4 107 86.4 103 84Z","smirk":"M103 85C107 88.4 114 88 120 82C114 85.6 107 86.2 103 85Z",
         "soft":"M104 85C108 87.6 113 87.6 117 84.6C113 86.4 108 86.4 104 85Z","flat":"M104 86.5C109 85.6 113 85.8 117 84.4C113 86.8 109 87.4 104 86.5Z",
         "line":"M105 86C109 85.4 112 85.4 115 86C112 86.6 109 86.6 105 86Z"}
-def face_parts(op,dx,dy,b,mouth,r=3.4):
+TILT={"stern":11,"worried":-9,"wry":4,"tender":-2}
+def face_parts(op,dx,dy,b,mouth,r=3.4,tilt=0):
+    """No eyebrows (D-30): expression = eye openness, eye tilt, mouth."""
     h=2+op*7
-    parts=[solid_eye(h,False),solid_eye(h,True),solid_brow(b[0],b[1],False),solid_brow(b[2],b[3],True)]
+    parts=[rot(solid_eye(h,False),tilt,96,65),rot(solid_eye(h,True),-tilt,124,65)]
     parts.append(ell(110,86,2.6,3.6) if mouth=="oh" else MOUTHS[mouth])
     return [],parts
 FACES={ # open, look dx, look dy, brows (outerL,innerL,outerR,innerR), mouth
@@ -49,7 +53,7 @@ FACES={ # open, look dx, look dy, brows (outerL,innerL,outerR,innerR), mouth
 }
 def eyes(kind):
     if kind in FACES:
-        op,dx,dy,b,m=FACES[kind]; return face_parts(op,dx,dy,b,m)
+        op,dx,dy,b,m=FACES[kind]; return face_parts(op,dx,dy,b,m,tilt=TILT.get(kind,0))
     if kind=="happy":
         return ["M86 68C89 57 101 57 104 68","M116 68C119 57 131 57 134 68","M86 49C91 45 100 45 104 49","M134 49C129 45 120 45 116 49","M99 83C107 92 113 92 121 83"],[]
     if kind=="sleep":
