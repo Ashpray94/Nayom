@@ -39,7 +39,7 @@ object NayomType {
     val title = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = 22.sp, lineHeight = 30.sp)
     val body = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 24.sp)
     val status = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.8.sp)
-    val label = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = 11.sp, letterSpacing = 2.sp)
+    val label = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = 10.sp, letterSpacing = 1.4.sp)
     val button = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 2.6.sp)
 }
 

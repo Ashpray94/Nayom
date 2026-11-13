@@ -48,7 +48,7 @@ fun Title(text: String, warm: Boolean = false, color: androidx.compose.ui.graphi
 
 /** Single-line illustration: robot mum in ink, one concept fill in an accent. Layers so dark mode just works. */
 @Composable
-fun Illustration(name: String, accent: androidx.compose.ui.graphics.Color, size: Int = 220) {
+fun Illustration(name: String, accent: androidx.compose.ui.graphics.Color, size: Int = 260) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     fun id(suffix: String) = ctx.resources.getIdentifier("ill_${name}_$suffix", "drawable", ctx.packageName)
     Box(Modifier.size(size.dp)) {
@@ -61,9 +61,9 @@ fun Illustration(name: String, accent: androidx.compose.ui.graphics.Color, size:
 @Composable
 fun Empty(art: String, accent: androidx.compose.ui.graphics.Color, line: String, sentence: String, modifier: Modifier = Modifier) =
     Column(modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Illustration(art, accent)
-        Text(line, style = NayomType.display.copy(fontSize = 40.sp, lineHeight = 44.sp), color = colors.ink, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        Text(line, style = NayomType.display.copy(fontSize = 38.sp, lineHeight = 44.sp), color = colors.ink, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         Text(sentence, style = NayomType.body, color = colors.muted, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             modifier = Modifier.padding(horizontal = 24.dp))
     }

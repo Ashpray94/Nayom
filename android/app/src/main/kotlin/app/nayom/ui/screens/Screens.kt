@@ -48,10 +48,11 @@ fun TodayScreen(st: AppState) = Screen(actions = {
     val n = st.next
     if (n != null) Button("Kept", true, Modifier.fillMaxWidth()) { st.mark(n.id, Status.Kept) }
     Button("Someone asked me", n == null && st.unhandledMiss == null, Modifier.fillMaxWidth()) { st.route = Route.AskIn }
-}, scroll = true) {
+    Row(Modifier.fillMaxWidth().clickable { st.route = Route.Evening }.padding(top = 8.dp), horizontalArrangement = Arrangement.Center) { Label("Evening sheet") }
+}, scroll = st.next != null || st.unhandledMiss != null) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Title("Today")
-        Box(Modifier.clickable { st.route = Route.Setup }.padding(top = 16.dp)) { Label("Setup") }
+        Box(Modifier.clickable { st.route = Route.Setup }.padding(top = 26.dp)) { Label("Setup") }
     }
     val miss = st.unhandledMiss
     if (miss != null) {
@@ -72,10 +73,9 @@ fun TodayScreen(st: AppState) = Screen(actions = {
             1f - left.seconds / 86400f, left.seconds < 3600)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { Label("${st.dueSoon} due in the next 48 h") }
     } else if (miss == null) {
-        if (st.day.kept > 0) Empty("all_kept", colors.teal, "All kept.", "${st.day.kept} kept today. Nothing is owed. Rest well.")
-        else Empty("clear_sky", colors.amber, "Clear sky.", "No promises due. When you say yes to someone, add it in Promises.")
+        Box(Modifier.fillMaxWidth().weight(1f, fill = true), Alignment.Center) { if (st.day.kept > 0) Empty("all_kept", colors.teal, "All kept.", "${st.day.kept} kept today. Nothing is owed. Rest well.")
+        else Empty("clear_sky", colors.amber, "Clear sky.", "No promises due. When you say yes to someone, add it in Promises.") }
     }
-    Box(Modifier.clickable { st.route = Route.Evening }) { Label("Evening sheet") }
 }
 
 @Composable
