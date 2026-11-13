@@ -35,13 +35,16 @@ object NayomType {
     val heading = TextStyle(fontFamily = Cormorant, fontWeight = FontWeight.Medium, fontSize = 40.sp, lineHeight = 42.sp)
     val display = TextStyle(fontFamily = Cormorant, fontWeight = FontWeight.Medium, fontStyle = FontStyle.Italic, fontSize = 46.sp, lineHeight = 46.sp)
     val numeral = TextStyle(fontFamily = Sora, fontWeight = FontWeight.ExtraLight, fontSize = 56.sp)
-    val body = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 24.sp)
+    val title = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = 22.sp, lineHeight = 30.sp)
+    val body = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 24.sp)
     val status = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.8.sp)
     val label = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = 11.sp, letterSpacing = 2.sp)
     val button = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 2.6.sp)
 }
 
 object Shape { const val card = 22; const val button = 6; const val tile = 44 }
+/** 8dp grid. Screen edge 24, gap between ideas 24, inside a card 24. */
+object Space { const val edge = 24; const val gap = 24; const val pad = 24; const val tight = 8 }
 
 val LocalNayomColors = staticCompositionLocalOf { LightColors }
 

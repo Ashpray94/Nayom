@@ -10,94 +10,86 @@ import app.nayom.R
 import app.nayom.ui.components.*
 import app.nayom.ui.theme.*
 
+/** Every screen: 24 edge, 24 between ideas, one focal point, actions pinned at the bottom. */
 @Composable
-private fun Screen(content: @Composable ColumnScope.() -> Unit) =
-    Column(Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 24.dp), verticalArrangement = Arrangement.spacedBy(14.dp), content = content)
+private fun Screen(actions: (@Composable ColumnScope.() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) =
+    Column(Modifier.fillMaxSize().statusBarsPadding().padding(horizontal = Space.edge.dp).padding(top = 16.dp, bottom = 24.dp)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(Space.gap.dp), content = content)
+        if (actions != null) Column(verticalArrangement = Arrangement.spacedBy(12.dp), content = actions)
+    }
 
-/** S-01 Today: one focal point — the promise that is closest to due. */
+@Composable
+private fun IconLine(icon: Int, tint: androidx.compose.ui.graphics.Color, text: String) =
+    Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Tile(icon, tint); Text(text, style = NayomType.body, color = colors.ink, modifier = Modifier.weight(1f))
+    }
+
+/** S-01 Today: one focal point, the promise closest to due. No serif. */
 @Composable
 fun TodayScreen() = Screen {
     Label("Today")
-    Text("Naya Mom is watching the clock.", style = NayomType.display, color = colors.ink)
     Card {
         Label("Next promise")
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(16.dp))
         Text("02:50:12", style = NayomType.numeral, color = colors.ink)
-        Text("Final banner file · due 17:00", style = NayomType.body, color = colors.muted)
+        Spacer(Modifier.height(8.dp))
+        Text("Final banner file", style = NayomType.title, color = colors.ink)
+        Text("Due 17:00", style = NayomType.body, color = colors.muted)
     }
-    Card {
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Tile(R.drawable.ic_promises, colors.teal)
-            Column { Text("3 promises due in 48 h", style = NayomType.body, color = colors.ink); Label("9 of 11 this week") }
-        }
-    }
+    Card { IconLine(R.drawable.ic_promises, colors.teal, "3 promises due in 48 h") }
 }
 
-/** I-01 Gate card: shown over the app when you are about to say yes. Yes and Later unlock after the pause. */
+/** I-01 Gate card. Yes and Later unlock after the pause. */
 @Composable
-fun GateScreen() = Screen {
+fun GateScreen() = Screen(actions = {
+    Button("No, kindly", true, Modifier.fillMaxWidth()) {}
+    Button("Later", false, Modifier.fillMaxWidth()) {}
+    Button("Yes", false, Modifier.fillMaxWidth()) {}
+    Spacer(Modifier.height(4.dp))
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { Label("Yes and Later unlock in 8 s") }
+}) {
     Label("Before you say yes")
-    Text("Ravi asks: Banner tweak, today.", style = NayomType.heading, color = colors.ink)
-    Card {
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Tile(R.drawable.ic_clock, colors.amber)
-            Text("Pushes out Meena's file", style = NayomType.body, color = colors.ink)
-        }
-    }
-    Button("No, kindly", primary = true, modifier = Modifier.fillMaxWidth()) {}
-    Button("Later", primary = false, modifier = Modifier.fillMaxWidth()) {}
-    Button("Yes", primary = false, modifier = Modifier.fillMaxWidth()) {}
-    Label("Yes and Later unlock in 8 s")
+    Text("Ravi asks: Banner tweak, today.", style = NayomType.title, color = colors.ink)
+    Card { IconLine(R.drawable.ic_clock, colors.amber, "Pushes out Meena's file") }
 }
 
 /** I-02 Slip card: firm, never shaming. */
 @Composable
-fun SlipScreen() = Screen {
-    Label("Missed")
-    Text("Meena's final banner file was due at 17:00.", style = NayomType.heading, color = colors.ink)
-    Card {
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Tile(R.drawable.ic_missed, colors.berry)
-            Text("No file saved or sent since 09:15.", style = NayomType.body, color = colors.ink)
-        }
-    }
-    Button("Debrief", primary = true, modifier = Modifier.fillMaxWidth()) {}
-    Button("Reschedule", primary = false, modifier = Modifier.fillMaxWidth()) {}
+fun SlipScreen() = Screen(actions = {
+    Button("Debrief", true, Modifier.fillMaxWidth()) {}
+    Button("Reschedule", false, Modifier.fillMaxWidth()) {}
+}) {
+    Text("MISSED", style = NayomType.status, color = colors.berry)
+    Text("Meena's final banner file was due at 17:00.", style = NayomType.title, color = colors.ink)
+    Card { IconLine(R.drawable.ic_missed, colors.berry, "No file saved or sent since 09:15.") }
 }
 
-/** S-08 Evening sheet. */
+/** S-08 Evening. The one serif moment: a short closing line. */
 @Composable
-fun EveningScreen() = Screen {
+fun EveningScreen() = Screen(actions = {
+    Button("Talk to Naya Mom", true, Modifier.fillMaxWidth()) {}
+}) {
     Label("Evening")
     Text("Phone down.", style = NayomType.hero, color = colors.ink)
     Card {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             listOf("Missed" to colors.berry, "Moved" to colors.ink, "Reflex yes" to colors.ink).forEach { (k, c) ->
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("1", style = NayomType.numeral, color = c); Label(k)
+                    Text("1", style = NayomType.numeral, color = c)
+                    Spacer(Modifier.height(8.dp)); Label(k)
                 }
             }
         }
     }
-    Button("Talk to Naya Mom", primary = true, modifier = Modifier.fillMaxWidth()) {}
 }
 
-/** S-17 Setup: what Nayom may see, and the things she never reads. */
+/** S-17 Setup. */
 @Composable
-fun SetupScreen() = Screen {
+fun SetupScreen() = Screen(actions = {
+    Button("Allow", true, Modifier.fillMaxWidth()) {}
+}) {
     Label("Setup")
-    Text("What I may see", style = NayomType.heading, color = colors.ink)
-    Card {
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Tile(R.drawable.ic_check, colors.teal)
-            Text("Lets me see what you type and what is on screen.", style = NayomType.body, color = colors.ink)
-        }
-    }
-    Card {
-        Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-            Tile(R.drawable.ic_shield, colors.sky)
-            Text("Never: banking, OTP, authenticator and password apps.", style = NayomType.body, color = colors.ink)
-        }
-    }
-    Button("Allow", primary = true, modifier = Modifier.fillMaxWidth()) {}
+    Text("What I may see", style = NayomType.title, color = colors.ink)
+    Card { IconLine(R.drawable.ic_check, colors.teal, "What you type and what is on screen.") }
+    Card { IconLine(R.drawable.ic_shield, colors.sky, "Never: banking, OTP, authenticator and password apps.") }
 }

@@ -23,7 +23,7 @@ fun Icon(res: Int, tint: Color, size: Int = 24) =
 /** One card per idea. */
 @Composable
 fun Card(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) =
-    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(Shape.card.dp)).background(colors.surface).padding(20.dp), content = content)
+    Column(modifier.fillMaxWidth().clip(RoundedCornerShape(Shape.card.dp)).background(colors.surface).padding(Space.pad.dp), content = content)
 
 /** 44px status-icon tile: tint at ~14% behind the icon. */
 @Composable
@@ -34,7 +34,7 @@ fun Tile(res: Int, tint: Color) =
 fun Button(text: String, primary: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val bg = if (primary) colors.teal else Color.Transparent
     val fg = if (primary) Color.White else colors.teal
-    Box(modifier.clip(RoundedCornerShape(Shape.button.dp)).background(bg).clickable(onClick = onClick).padding(vertical = 16.dp), Alignment.Center) {
+    Box(modifier.clip(RoundedCornerShape(Shape.button.dp)).background(bg).clickable(onClick = onClick).padding(vertical = 18.dp), Alignment.Center) {
         Text(text.uppercase(), style = NayomType.button, color = fg)
     }
 }
