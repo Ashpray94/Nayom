@@ -63,8 +63,13 @@ class Brain(private val ctx: Context) {
         event("chess", "Chess", "${moves.size} moves, $result, $blunders blunders → [[Chess/${f.nameWithoutExtension}]]")
         index(); return f
     }
-    fun lastChess(): Triple<Int, Int, Int>? = dir("Chess").listFiles { x -> x.extension == "md" }.orEmpty().sortedBy { it.name }.let { l ->
-        if (l.size < 2) null else l[l.size - 2].readText().let { t -> fun n(k: String) = Regex("$k: (\\d+)").find(t)?.groupValues?.get(1)?.toInt() ?: 0; Triple(n("blunders"), n("mistakes"), n("inaccuracies")) } }
+    fun lastChess(): Triple<Int, Int, Int>? {
+        val l = dir("Chess").listFiles { x -> x.extension == "md" }.orEmpty().sortedBy { it.name }
+        if (l.size < 2) return null
+        val t = l[l.size - 2].readText()
+        fun n(k: String) = Regex("$k: (\\d+)").find(t)?.groupValues?.get(1)?.toInt() ?: 0
+        return Triple(n("blunders"), n("mistakes"), n("inaccuracies"))
+    }
 
     fun index() {
         val apps = dir("Apps").listFiles { f -> f.extension == "md" }.orEmpty().map { it.nameWithoutExtension }.sorted()
