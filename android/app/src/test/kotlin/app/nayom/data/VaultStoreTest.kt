@@ -41,4 +41,15 @@ class VaultStoreTest {
         val s = store(); s.addNote("Plan", "hi"); s.addPromise("A", "x", now.plusHours(1))
         assertEquals(listOf("plan"), s.notes().map { it.name })
     }
+
+    @Test fun activityLogsEverything() {
+        val st = store()
+        st.addNote("Plan", "buy milk")
+        val p = st.addPromise("Mira", "call", java.time.ZonedDateTime.now().plusHours(2))
+        st.setStatus(p.id, Status.Kept)
+        st.inbox("whatsapp", "Mira", "hello")
+        val kinds = st.activity().map { it.kind }
+        assertTrue(kinds.containsAll(listOf("note", "promise-add", "promise-kept")))
+        assertTrue(java.io.File(st.root, "Nayom/inbox/ph").listFiles()!!.isNotEmpty())
+    }
 }

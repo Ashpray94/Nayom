@@ -39,6 +39,7 @@ class VaultStore(val root: File, private val dev: String = "ph", private val zon
             "due_source: stated\ncreated: ${clock().format(iso)}\nsource_app: nayom\nquote_enc: null\nprivate: false\n---\n")
         ensurePerson(person)
         ledger(id, "open", null)
+        log("promise-add", "$id | ${person.trim()} | ${what.trim()} | due ${due.format(iso)}")
         return Promise(id, person.trim(), what.trim(), due, Status.Open)
     }
 
@@ -47,12 +48,35 @@ class VaultStore(val root: File, private val dev: String = "ph", private val zon
         File(dir("asks"), "$id.md").writeText(
             "---\nnayom: ask\nid: $id\nfrom: \"[[${slug(from)}]]\"\nwhat: ${q(what)}\ncreated: ${clock().format(iso)}\nprivate: false\n---\n")
         ensurePerson(from)
+        log("ask-in", "$id | ${from.trim()} | ${what.trim()}")
         return Ask(id, from.trim(), what.trim(), clock(), null)
     }
 
-    fun decide(askId: String, d: Decision) = ledger(askId, d.name.lowercase(), null)
-    fun setStatus(id: String, s: Status, newDue: ZonedDateTime? = null) =
-        ledger(id, s.name.lowercase(), newDue?.format(iso))
+    fun decide(askId: String, d: Decision) { ledger(askId, d.name.lowercase(), null); log("ask-${d.name.lowercase()}", askId) }
+    fun setStatus(id: String, s: Status, newDue: ZonedDateTime? = null) {
+        ledger(id, s.name.lowercase(), newDue?.format(iso)); log("promise-${s.name.lowercase()}", id + (newDue?.let { " -> ${it.format(iso)}" } ?: ""))
+    }
+
+    // ---- activity: everything you do and write, one line each, one file per day. activity/<dev>/YYYY-MM-DD.md
+    fun log(kind: String, text: String = "") {
+        val now = clock()
+        val f = File(dir("activity/$dev"), now.toLocalDate().toString() + ".md")
+        if (!f.exists()) f.writeText("# ${now.toLocalDate()}\n\n")
+        f.appendText("- ${now.format(DateTimeFormatter.ofPattern("HH:mm:ss"))} | $kind | ${text.trim().replace("\n", " ")}\n")
+    }
+    data class Entry(val time: String, val kind: String, val text: String)
+    fun activity(date: java.time.LocalDate = clock().toLocalDate()): List<Entry> =
+        File(dir("activity/$dev"), "$date.md").takeIf { it.exists() }?.readLines().orEmpty()
+            .filter { it.startsWith("- ") }.map { it.removePrefix("- ").split(" | ", limit = 3) }
+            .filter { it.size == 3 }.map { Entry(it[0], it[1], it[2]) }.reversed()
+
+    // ---- inbox: messages that reached the phone (notification listener). inbox/<dev>/YYYY-MM-DD.md
+    fun inbox(app: String, title: String, text: String) {
+        val now = clock()
+        val f = File(dir("inbox/$dev"), now.toLocalDate().toString() + ".md")
+        if (!f.exists()) f.writeText("# ${now.toLocalDate()}\n\n")
+        f.appendText("- ${now.format(DateTimeFormatter.ofPattern("HH:mm:ss"))} | $app | ${title.trim().replace("\n", " ")} | ${text.trim().replace("\n", " ")}\n")
+    }
 
     private fun ensurePerson(name: String) {
         val f = File(dir("people"), slug(name) + ".md")
@@ -133,6 +157,7 @@ class VaultStore(val root: File, private val dev: String = "ph", private val zon
     fun addDebrief(promiseId: String, reason: String) {
         val id = newId('D')
         File(dir("debriefs"), "$id.md").writeText("---\nnayom: debrief\nid: $id\npromise: \"[[$promiseId]]\"\ncreated: ${clock().format(iso)}\nreason: ${q(reason)}\n---\n")
+        log("debrief", "$promiseId | ${reason.trim()}")
     }
     fun debriefed(): Set<String> = dir("debriefs").listFiles { f -> f.name.endsWith(".md") }.orEmpty()
         .mapNotNull { front(it)["promise"]?.removePrefix("[[")?.removeSuffix("]]") }.toSet()
@@ -142,7 +167,7 @@ class VaultStore(val root: File, private val dev: String = "ph", private val zon
         .filter { it.isFile && it.extension == "md" }.map { Note(it.nameWithoutExtension, it) }.sortedBy { it.name }.toList()
 
     fun addNote(title: String, body: String): Note {
-        val f = File(root, slug(title) + ".md"); f.writeText("# ${title.trim()}\n\n$body\n"); return Note(title, f)
+        val f = File(root, slug(title) + ".md"); f.writeText("# ${title.trim()}\n\n$body\n"); log("note", "${title.trim()} | ${body.trim()}"); return Note(title, f)
     }
 
     private fun q(s: String) = "\"" + s.trim().replace("\"", "\\\"") + "\""

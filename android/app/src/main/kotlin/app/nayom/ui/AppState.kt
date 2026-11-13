@@ -19,6 +19,7 @@ sealed interface Route {
     data class Note(val file: java.io.File?) : Route
     data object Evening : Route
     data object Setup : Route
+    data object Activity : Route
 }
 
 /** All state comes from the vault. The UI only reads these lists and calls the actions. */
@@ -31,7 +32,10 @@ class AppState(app: Application) : AndroidViewModel(app) {
     var debriefed by mutableStateOf(setOf<String>()); private set
     var now by mutableStateOf(ZonedDateTime.now()); private set
     var route by mutableStateOf<Route>(Route.Home)
+        set(v) { field = v; store.log("open", v::class.simpleName.orEmpty()) }
     var tab by mutableStateOf(0)
+    var activity by mutableStateOf(listOf<VaultStore.Entry>()); private set
+    fun loadActivity() { activity = store.activity() }
 
     init {
         refresh()

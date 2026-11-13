@@ -242,4 +242,19 @@ fun SetupScreen(st: AppState) = Screen(actions = { Button("Back", false, Modifie
     Card { IconLine(R.drawable.ic_shield, colors.sky, "Never read: banking, OTP, authenticator and password apps.") }
     Card { IconLine(R.drawable.ic_check, colors.teal, "Everything is saved as files on this phone. Nothing leaves it.") }
     Card { Label("Vault folder"); Spacer(Modifier.height(8.dp)); Text(st.store.root.absolutePath, style = NayomType.body, color = colors.muted) }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    Button("Today's activity", false, Modifier.fillMaxWidth()) { st.loadActivity(); st.route = Route.Activity }
+    Button("Allow message access", false, Modifier.fillMaxWidth()) {
+        ctx.startActivity(android.content.Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+    }
+}
+
+@Composable
+fun ActivityScreen(st: AppState) = Screen(actions = { Button("Back", false, Modifier.fillMaxWidth()) { st.route = Route.Setup } }, scroll = true) {
+    Title("Activity")
+    Text("Everything you did today. Saved as a file in your vault.", style = NayomType.body, color = colors.muted)
+    if (st.activity.isEmpty()) Text("Nothing yet.", style = NayomType.body, color = colors.muted)
+    st.activity.forEach { e ->
+        Card { Label("${e.time}  ${e.kind}"); Spacer(Modifier.height(6.dp)); Text(e.text, style = NayomType.body, color = colors.ink) }
+    }
 }

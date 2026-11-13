@@ -40,6 +40,7 @@ fun NayomApp(st: AppState = viewModel()) {
                 is Route.Note -> NoteScreen(st, r)
                 Route.Evening -> EveningScreen(st)
                 Route.Setup -> SetupScreen(st)
+                Route.Activity -> ActivityScreen(st)
             }
         }
         if (st.route == Route.Home) Row(Modifier.fillMaxWidth().background(colors.surface).navigationBarsPadding().padding(top = 12.dp, bottom = 8.dp)) {
