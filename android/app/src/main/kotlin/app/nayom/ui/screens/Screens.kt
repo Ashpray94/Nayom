@@ -52,7 +52,6 @@ fun TodayScreen(st: AppState) = Screen(actions = {
 }, scroll = st.next != null || st.unhandledMiss != null) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Title("Today")
-        Box(Modifier.clickable { st.route = Route.Setup }.padding(top = 26.dp)) { Label("Setup") }
     }
     val miss = st.unhandledMiss
     if (miss != null) {
@@ -74,8 +73,21 @@ fun TodayScreen(st: AppState) = Screen(actions = {
             1f - left.seconds / 86400f, left.seconds < 3600)
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { Label("${st.dueSoon} due in the next 48 h") }
     } else if (miss == null) {
-        Box(Modifier.fillMaxWidth().weight(1f, fill = true), Alignment.Center) { if (st.day.kept > 0) Empty("all_kept", colors.teal, "All kept.", "${st.day.kept} kept today. Nothing is owed. Rest well.")
-        else Empty("clear_sky", colors.amber, "Clear sky.", "No promises due. When you say yes to someone, add it in Promises.") }
+        Box(Modifier.fillMaxWidth().weight(1f, fill = true).verticalScroll(rememberScrollState()), Alignment.TopCenter) {
+            Column(verticalArrangement = Arrangement.spacedBy(Space.gap.dp)) {
+                if (st.day.kept > 0) Empty("all_kept", colors.teal, "All kept.", "${st.day.kept} kept today. Nothing is owed. Rest well.")
+                else Empty("clear_sky", colors.amber, "Clear sky.", "No promises due. Use the quiet to do what you said you would.")
+                Card {
+                    Label("What to do here")
+                    Spacer(Modifier.height(16.dp))
+                    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                        IconLine(R.drawable.ic_promises, colors.teal, "Said yes to someone? Add it under Promises with a time.")
+                        IconLine(R.drawable.ic_people, colors.sky, "Someone asked you? Tap Someone asked me before you answer.")
+                        IconLine(R.drawable.ic_today, colors.amber, "Each night, open the Evening sheet and be honest.")
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -237,24 +249,50 @@ fun EveningScreen(st: AppState) = Screen(actions = {
 }
 
 @Composable
-fun SetupScreen(st: AppState) = Screen(actions = { Button("Back", false, Modifier.fillMaxWidth()) { st.back() } }, scroll = true) {
-    Title("Setup")
+fun SetupScreen(st: AppState) = Screen(scroll = true) {
+    Title("Settings")
     Card { IconLine(R.drawable.ic_shield, colors.sky, "Never read: banking, OTP, authenticator and password apps.") }
     Card { IconLine(R.drawable.ic_check, colors.teal, "Everything is saved as files on this phone. Nothing leaves it.") }
     Card { Label("Vault folder"); Spacer(Modifier.height(8.dp)); Text(st.store.root.absolutePath, style = NayomType.body, color = colors.muted) }
     val ctx = androidx.compose.ui.platform.LocalContext.current
     Button("Today's activity", false, Modifier.fillMaxWidth()) { st.loadActivity(); st.route = Route.Activity }
+    Button("Show the intro again", false, Modifier.fillMaxWidth()) { st.replayIntro() }
     Button("Allow message access", false, Modifier.fillMaxWidth()) {
         ctx.startActivity(android.content.Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 }
 
 @Composable
-fun ActivityScreen(st: AppState) = Screen(actions = { Button("Back", false, Modifier.fillMaxWidth()) { st.route = Route.Setup } }, scroll = true) {
+fun ActivityScreen(st: AppState) = Screen(actions = { Button("Back", false, Modifier.fillMaxWidth()) { st.tab = 4; st.back() } }, scroll = true) {
     Title("Activity")
     Text("Everything you did today. Saved as a file in your vault.", style = NayomType.body, color = colors.muted)
     if (st.activity.isEmpty()) Text("Nothing yet.", style = NayomType.body, color = colors.muted)
     st.activity.forEach { e ->
         Card { Label("${e.time}  ${e.kind}"); Spacer(Modifier.height(6.dp)); Text(e.text, style = NayomType.body, color = colors.ink) }
+    }
+}
+
+
+@Composable
+fun OnboardingScreen(st: AppState, step: Int) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val pages = listOf(
+        Triple("clear_sky", "I am Nayom.", "I am here so you keep your word. I will be firm, and I will be kind about it."),
+        Triple("nothing_owed", "Three things to do.", "1. Said yes to someone: add the promise with a time.\n2. Someone asks you: tell me first, then answer.\n3. Each night: open the Evening sheet and tell the truth."),
+        Triple("no_one_yet", "Let me see your messages.", "I read message notifications on this phone to notice promises. Banking, OTP and password apps are never read. Everything stays on this phone."),
+    )
+    val (art, line, text) = pages[step]
+    Screen(actions = {
+        if (step == 2) Button("Allow message access", false, Modifier.fillMaxWidth()) {
+            ctx.startActivity(android.content.Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
+        Button(if (step < 2) "Next" else "Start", true, Modifier.fillMaxWidth()) {
+            if (step < 2) st.route = Route.Onboarding(step + 1) else st.finishOnboarding()
+        }
+    }, scroll = true) {
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.Center) { Illustration(art, colors.teal, 300) }
+        Text(line, style = NayomType.display.copy(fontSize = 38.sp, lineHeight = 44.sp), color = colors.ink, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.fillMaxWidth())
+        Text(text, style = NayomType.body, color = colors.muted, modifier = Modifier.fillMaxWidth())
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { Label("${step + 1} of 3") }
     }
 }

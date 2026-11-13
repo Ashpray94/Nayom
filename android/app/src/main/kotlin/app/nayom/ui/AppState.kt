@@ -20,6 +20,7 @@ sealed interface Route {
     data object Evening : Route
     data object Setup : Route
     data object Activity : Route
+    data class Onboarding(val step: Int = 0) : Route
 }
 
 /** All state comes from the vault. The UI only reads these lists and calls the actions. */
@@ -36,6 +37,10 @@ class AppState(app: Application) : AndroidViewModel(app) {
         get() = routeState
         set(v) { routeState = v; store.log("open", v::class.simpleName.orEmpty()) }
     var tab by mutableStateOf(0)
+    private val flag get() = java.io.File(store.root, "Nayom/.onboarded")
+    var onboarded by mutableStateOf(java.io.File(store.root, "Nayom/.onboarded").exists()); private set
+    fun finishOnboarding() { flag.parentFile?.mkdirs(); flag.writeText("1"); onboarded = true; store.log("onboarded"); route = Route.Home }
+    fun replayIntro() { route = Route.Onboarding(0) }
     var activity by mutableStateOf(listOf<VaultStore.Entry>()); private set
     fun loadActivity() { activity = store.activity() }
 
