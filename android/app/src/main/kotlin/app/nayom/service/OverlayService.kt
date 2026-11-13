@@ -271,7 +271,7 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
                 .withEndAction { head.animate().rotationY(0f).rotationX(0f).rotation(0f).setStartDelay(back).setDuration(380).start() }.start()
         }
         when (kind) {
-            "scroll" -> pose(0f, if (dir >= 0) -20f else 20f, 0f, 140, 450)          // nods up/down with the content
+            "scroll", "nod" -> pose(0f, if (dir >= 0) -20f else 20f, 0f, 140, 450)          // nods up/down with the content
             "notify" -> { setFace("worried", 1600); pose(0f, -24f, 0f, 200, 900) }                                  // looks up at the notification
             "warn" -> { setFace(if (anger >= 3) "rage" else if (anger >= 2) "angry" else "stern", 2400); head.animate().rotationY(-26f).setDuration(150).withEndAction { head.animate().rotationY(26f).setDuration(260).withEndAction { head.animate().rotationY(-18f).setDuration(220).withEndAction { head.animate().rotationY(0f).setDuration(260).start() }.start() }.start() }.start() } // slow "no"
             "video" -> { watching = true; head.animate().rotationY(0f).rotationX(8f).setDuration(500).start() }

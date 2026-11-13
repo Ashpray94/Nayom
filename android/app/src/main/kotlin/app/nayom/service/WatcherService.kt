@@ -19,6 +19,10 @@ class WatcherService : AccessibilityService() {
     private var pending: Runnable? = null
     private var lastText = ""
     private var lastScrollY = 0
+    private var lastIndex = -1
+    private var accDist = 0
+    private var lastMoveAt = 0L
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     override fun onAccessibilityEvent(e: AccessibilityEvent) {
         val p = e.packageName?.toString() ?: return
@@ -33,7 +37,17 @@ class WatcherService : AccessibilityService() {
             }
             AccessibilityEvent.TYPE_VIEW_CLICKED -> if (!Blocked.app(p)) { runCatching { val b = android.graphics.Rect(); e.source?.getBoundsInScreen(b); if (!b.isEmpty) OverlayService.look(b.centerX(), b.centerY()) } }
             AccessibilityEvent.TYPE_VIEW_SCROLLED -> if (!Blocked.app(p)) {
-                val y = e.scrollY; OverlayService.react("scroll", if (y >= lastScrollY) 1 else -1); lastScrollY = y
+                // distance tracker: a swipe counts only after ~40% of the screen height has really moved
+                val dm = resources.displayMetrics; val now = System.currentTimeMillis()
+                val y = e.scrollY
+                var d = maxOf(kotlin.math.abs(if (android.os.Build.VERSION.SDK_INT >= 28) e.scrollDeltaY else 0), kotlin.math.abs(y - lastScrollY))
+                if (d == 0 && e.fromIndex != lastIndex) d = dm.heightPixels / 2          // pager/reels: one page flip, no pixel delta
+                val dir = if (y >= lastScrollY) 1 else -1
+                lastScrollY = y; lastIndex = e.fromIndex
+                if (now - lastMoveAt > 1200) accDist = 0                                    // a pause starts a fresh gesture
+                lastMoveAt = now; accDist += d
+                if (d > dp(40)) OverlayService.react("nod", dir)                            // small glance for any real movement
+                if (accDist >= dm.heightPixels * 0.40) { accDist = 0; OverlayService.react("scroll", dir) }
             }
             AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED -> OverlayService.react("notify")
             AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED -> {
