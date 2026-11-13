@@ -24,3 +24,6 @@ Soft 3D matte vinyl, soft studio light, mint-white background fading to transpar
 
 ## Master prompt
 Same character as the references: an adult woman robot with a wide oval beige head, one thick black hair cap with a single round bun, a mint-green glowing ear light on each side, solid black squarish eyes with one white highlight and long lash lines acting as brows, a thin dark-green mouth. Slim adult body in one plain mint-green tunic to the shin, three-quarter sleeves, rounded mitten hands, small beige shoes. Full body, standing or sitting on a surface. Soft 3D matte vinyl, soft studio light, mint-white background, square, no text. Scene: <scene>.
+
+## Role (D-33)
+She is the user's mother and instructor, not a character to look at. Every image: faces the viewer, looks straight at them with calm firm loving eyes, and directs them to act (holds the object out toward them, gestures, raised finger). Upright, composed, slight forward lean. The viewer is the one being taught to be responsible.
