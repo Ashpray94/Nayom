@@ -170,7 +170,7 @@ class OverlayService : Service() {
     fun setAppHidden(h: Boolean) { if (h != hiddenByApp) { hiddenByApp = h; applyVisibility() } }
 
     // ---- bubble
-    fun show(text: String, ms: Long, tap: Intent?) = ui.post {
+    fun show(text: String, ms: Long, tap: Intent?): Boolean = ui.post {
         if (hiddenByApp || prefs.headHidden) return@post
         tapIntent = tap; bubbleText.text = text
         val dm = resources.displayMetrics; val maxH = dm.heightPixels / 2
@@ -195,7 +195,7 @@ class OverlayService : Service() {
 
     // ---- reactions: the head moves differently for each thing you do
 
-    fun reactTo(kind: String, dir: Int) = ui.post {
+    fun reactTo(kind: String, dir: Int): Boolean = ui.post {
         if (kind != "video") lastInput = System.currentTimeMillis()
         if (kind == "typing") lastType = System.currentTimeMillis()
         if (kind == "scroll") { val t = System.currentTimeMillis(); if (t - scrollWin > 90_000) { scrollWin = t; scrolls = 0 }; scrolls++
