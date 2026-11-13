@@ -52,6 +52,7 @@ fun Illustration(name: String, accent: androidx.compose.ui.graphics.Color, size:
     val ctx = androidx.compose.ui.platform.LocalContext.current
     fun id(suffix: String) = ctx.resources.getIdentifier("ill_${name}_$suffix", "drawable", ctx.packageName)
     Box(Modifier.size(size.dp)) {
+        Icon(id("brand"), colors.teal.copy(alpha = .45f), size)
         Icon(id("fill"), accent.copy(alpha = .38f), size)
         Icon(id("line"), colors.ink, size)
     }
