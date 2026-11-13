@@ -44,7 +44,8 @@ class OverlayService : Service() {
         fun mood(face: String, ms: Long = 3000) { instance?.ui?.post { instance?.setFace(face, ms) } }
         fun react(kind: String, dir: Int = 0) { instance?.reactTo(kind, dir) }
         fun look(x: Int, y: Int) { instance?.lookAt(x, y) }
-        fun typing(l: Int, t: Int, r: Int, caret: Int) { instance?.typingAt(l, t, r, caret) }
+        fun typing(l: Int, t: Int, r: Int, b: Int, before: String) { instance?.typingAt(l, t, r, b, before) }
+        fun fixes(list: List<String>) { instance?.showFixes(list) }
         fun start(ctx: Context) { ctx.startForegroundService(Intent(ctx, OverlayService::class.java)) }
         fun command(ctx: Context, action: String) { ctx.startForegroundService(Intent(ctx, OverlayService::class.java).setAction(action)) }
     }
@@ -146,7 +147,10 @@ class OverlayService : Service() {
         // head + tap menu
         head = ImageView(this).apply { setImageResource(R.drawable.head_calm); elevation = dp(8).toFloat()
             layoutParams = LinearLayout.LayoutParams(dp(64), dp(64)) }
-        headRoot = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.END; addView(head) }
+        badge = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 12f; typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.CENTER; visibility = View.GONE
+            background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(0xFFD93025.toInt()); setStroke(dp(2), 0xFFFFFFFF.toInt()) }; elevation = dp(10).toFloat() }
+        val headFrame = FrameLayout(this).apply { addView(head); addView(badge, FrameLayout.LayoutParams(dp(24), dp(24), Gravity.TOP or Gravity.END)) }
+        headRoot = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.END; addView(headFrame) }
         headLp = WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
@@ -180,7 +184,8 @@ class OverlayService : Service() {
             r.addView(pill("Hide head", 0xFFFFFFFF.toInt(), 0xFF22706A.toInt()) { dismissBubble(); prefs.headHidden = true; applyVisibility(); refreshNotification() })
         }
         actTop = row(); actBottom = row(); fill(actTop); fill(actBottom)
-        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; addView(actTop); addView(scroll); addView(actBottom) }
+        fixCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE; setPadding(0, 0, 0, dp(10)) }
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; addView(actTop); addView(scroll); addView(fixCol); addView(actBottom) }
         bubbleRoot = FrameLayout(this).apply {
             background = GradientDrawable().apply { setColor(0xFFFFFFFF.toInt()); cornerRadius = dp(24).toFloat(); setStroke(dp(1), 0x330F2E2C) }
             elevation = dp(10).toFloat(); visibility = View.GONE; addView(col)
@@ -206,6 +211,7 @@ class OverlayService : Service() {
     fun show(text: String, ms: Long, tap: Intent?, actions: Boolean = false): Boolean = ui.post {
         if (hiddenByApp || prefs.headHidden) return@post
         tapIntent = tap; actionsOn = actions; bubbleText.text = text
+        if (!text.contains("mistake")) fixCol.visibility = View.GONE
         val dm = resources.displayMetrics; val maxH = dm.heightPixels / 2
         bubbleText.measure(View.MeasureSpec.makeMeasureSpec(dm.widthPixels - dp(32), View.MeasureSpec.EXACTLY), View.MeasureSpec.UNSPECIFIED)
         scroll.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, minOf(bubbleText.measuredHeight, maxH))
@@ -277,20 +283,44 @@ class OverlayService : Service() {
         setFace(baseFace())
         if (level >= 2) reactTo("warn", 0)
     }
-    /** She sits on the text box and looks toward the cursor while you type; looks back at you when you stop. */
-    fun typingAt(l: Int, t: Int, r: Int, caret: Int) = ui.post {
+    /** She sits 20dp off the top-left corner of the text box; her eyes sweep left-to-right with the cursor across the box. */
+    private var lastLine = 0
+    fun typingAt(l: Int, t: Int, r: Int, b: Int, before: String) = ui.post {
         if (headRoot.visibility != View.VISIBLE) return@post
         val dm = resources.displayMetrics
         if (!typeMode) { typeMode = true; savedX = headLp.x; savedY = headLp.y }
-        val cx = (l + r) / 2
-        headLp.x = (dm.widthPixels - cx - dp(32)).coerceIn(0, dm.widthPixels - dp(64)); headLp.y = maxOf(dp(8), t - dp(72))
+        val hw = dp(64)
+        val left = (l - hw - dp(20)).coerceAtLeast(dp(4))            // left of the box if there is room, else just inside the screen edge
+        headLp.x = (dm.widthPixels - left - hw).coerceIn(0, dm.widthPixels - hw)
+        headLp.y = maxOf(dp(8), t - hw - dp(20))
         runCatching { wm.updateViewLayout(headRoot, headLp) }
-        val caretX = (l + dp(16) + caret * dp(9)).coerceAtMost(r - dp(8))
-        val look = ((caretX - cx).toFloat() / maxOf(1, (r - l) / 2)).coerceIn(-1f, 1f)
-        head.cameraDistance = 12000f * resources.displayMetrics.density
-        head.animate().rotationY(look * 18f).translationX(look * dp(4)).setDuration(120).start()
-        setFace(if (look < -0.33f) "dl" else if (look > 0.33f) "dr" else "dc", 1800)
+        val perLine = maxOf(8, (r - l - dp(32)) / dp(9))
+        val lines = before.split('\n'); val col = lines.last().length % perLine
+        val f = ((dp(16) + col * dp(9)).toFloat() / maxOf(1, r - l)).coerceIn(0f, 1f)   // 0 = left-most of the box, 1 = right-most
+        val newLine = lines.size - 1 != lastLine; lastLine = lines.size - 1
+        head.cameraDistance = 12000f * dm.density
+        val look = f * 2f - 1f
+        head.animate().rotationY(look * 16f).translationX(look * dp(4)).setDuration(110).start()
+        // a new line drops her eyes straight down for a moment, then the next characters pull them back to the cursor
+        setFace(if (newLine && col < 3) "dc" else if (f < 0.33f) "dl" else if (f > 0.66f) "dr" else "dc", 1800)
         ui.removeCallbacks(backToMe); ui.postDelayed(backToMe, 1800)
+    }
+    // ---- mistakes: red numbered badges
+    private var badge: TextView? = null
+    private lateinit var fixCol: LinearLayout
+    fun showFixes(list: List<String>) = ui.post {
+        badge?.apply { visibility = if (list.isEmpty()) View.GONE else View.VISIBLE; text = list.size.toString() }
+        fixCol.removeAllViews()
+        if (list.isEmpty() || headRoot.visibility != View.VISIBLE) return@post
+        list.forEachIndexed { i, m ->
+            fixCol.addView(LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(16), dp(4), dp(16), dp(4))
+                addView(TextView(context).apply { text = "${i + 1}"; setTextColor(0xFFFFFFFF.toInt()); textSize = 12f; typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.CENTER
+                    background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(0xFFD93025.toInt()) }; layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)) })
+                addView(TextView(context).apply { text = m; setTextColor(0xFF0F2E2C.toInt()); textSize = 15f; setPadding(dp(10), 0, 0, 0) }) })
+        }
+        fixCol.visibility = View.VISIBLE
+        show("${list.size} mistake${if (list.size > 1) "s" else ""}. Fix them before you send.", 9000, null)
+        setFace("stern", 3000)
     }
     private val backToMe = Runnable {
         if (!typeMode) return@Runnable
