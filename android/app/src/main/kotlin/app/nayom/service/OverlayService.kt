@@ -39,7 +39,7 @@ class OverlayService : Service() {
     companion object {
         @Volatile var instance: OverlayService? = null
         @Volatile var fgPkg: String = ""
-        fun say(text: String, ms: Long = 0, tap: Intent? = null) { instance?.show(text, ms, tap) }
+        fun say(text: String, ms: Long = 0, tap: Intent? = null) { instance?.show(text, ms, tap, false) }
         fun appHidden(h: Boolean) { instance?.setAppHidden(h) }
         fun react(kind: String, dir: Int = 0) { instance?.reactTo(kind, dir) }
         fun start(ctx: Context) { ctx.startForegroundService(Intent(ctx, OverlayService::class.java)) }
@@ -49,7 +49,10 @@ class OverlayService : Service() {
     private lateinit var wm: WindowManager
     private lateinit var headRoot: LinearLayout
     private lateinit var head: ImageView
-    private lateinit var menu: LinearLayout
+    private lateinit var actTop: LinearLayout
+    private lateinit var actBottom: LinearLayout
+    private lateinit var scroll: ScrollView
+    private var anger = 0
     private lateinit var headLp: WindowManager.LayoutParams
     private lateinit var bubbleRoot: FrameLayout
     private lateinit var bubbleText: TextView
@@ -106,11 +109,11 @@ class OverlayService : Service() {
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
     private fun pill(label: String, fg: Int = 0xFF0F2E2C.toInt(), bg: Int = 0xFFFFFFFF.toInt(), click: () -> Unit) = TextView(this).apply {
-        text = label.uppercase(); setTextColor(fg); textSize = 11f; typeface = Typeface.DEFAULT_BOLD; letterSpacing = 0.1f
-        setPadding(dp(14), dp(9), dp(14), dp(9)); gravity = Gravity.CENTER
+        text = label.uppercase(); setTextColor(fg); textSize = 10f; typeface = Typeface.DEFAULT_BOLD; letterSpacing = 0.1f
+        setPadding(dp(10), dp(9), dp(10), dp(9)); gravity = Gravity.CENTER
         background = GradientDrawable().apply { setColor(bg); cornerRadius = dp(20).toFloat(); setStroke(dp(1), 0x330F2E2C) }
         elevation = dp(4).toFloat(); setOnClickListener { click() }
-        layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { topMargin = dp(6) }
+        setSingleLine(true); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(6) }
     }
 
     private fun build() {
@@ -118,11 +121,7 @@ class OverlayService : Service() {
         // head + tap menu
         head = ImageView(this).apply { setImageResource(R.drawable.head_avatar); elevation = dp(8).toFloat()
             layoutParams = LinearLayout.LayoutParams(dp(64), dp(64)) }
-        menu = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.END; visibility = View.GONE }
-        menu.addView(pill("Open app") { menu.visibility = View.GONE; startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) })
-        menu.addView(pill("Messages") { menu.visibility = View.GONE; startActivity(Intent(this, MainActivity::class.java).putExtra("route", "inbox").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) })
-        menu.addView(pill("Hide head", 0xFFFFFFFF.toInt(), 0xFF22706A.toInt()) { menu.visibility = View.GONE; prefs.headHidden = true; applyVisibility(); refreshNotification() })
-        headRoot = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.END; addView(head); addView(menu) }
+        headRoot = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.END; addView(head) }
         headLp = WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
@@ -134,12 +133,11 @@ class OverlayService : Service() {
                 MotionEvent.ACTION_MOVE -> {
                     val dx = (sx - e.rawX).toInt(); val dy = (e.rawY - sy).toInt()
                     if (kotlin.math.abs(dx) + kotlin.math.abs(dy) > 12) moved = true
-                    if (moved) { headLp.x = ox + dx; headLp.y = oy + dy; wm.updateViewLayout(headRoot, headLp) }
+                    if (moved) { headLp.x = ox + dx; headLp.y = oy + dy; wm.updateViewLayout(headRoot, headLp); placeBubble() }
                 }
                 MotionEvent.ACTION_UP -> {
                     if (moved) { prefs.avatarX = headLp.x; prefs.avatarY = headLp.y }
-                    else { reactTo("click", 0); menu.visibility = if (menu.visibility == View.VISIBLE) View.GONE else View.VISIBLE
-                        if (menu.visibility == View.VISIBLE) { show(summary(), 9000, null); ui.postDelayed({ menu.visibility = View.GONE }, 9000) } }
+                    else { reactTo("click", 0); if (bubbleRoot.visibility == View.VISIBLE && actionsOn) dismissBubble() else show(summary(), 9000, null, true) }
                 }
             }
             true
@@ -149,12 +147,20 @@ class OverlayService : Service() {
         // bubble: its own wide window, scrollable, up to half the screen height
         val dm = resources.displayMetrics
         bubbleText = TextView(this).apply { setTextColor(0xFF0F2E2C.toInt()); textSize = 17f; setLineSpacing(0f, 1.15f); setPadding(dp(20), dp(18), dp(20), dp(18)) }
-        val scroll = ScrollView(this).apply { addView(bubbleText); isVerticalScrollBarEnabled = false }
+        scroll = ScrollView(this).apply { addView(bubbleText); isVerticalScrollBarEnabled = false }
+        fun row() = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.END; visibility = View.GONE; setPadding(dp(12), dp(8), dp(12), dp(8)) }
+        fun fill(r: LinearLayout) {
+            r.addView(pill("Open app") { dismissBubble(); startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) })
+            r.addView(pill("Messages") { dismissBubble(); startActivity(Intent(this, MainActivity::class.java).putExtra("route", "inbox").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) })
+            r.addView(pill("Hide head", 0xFFFFFFFF.toInt(), 0xFF22706A.toInt()) { dismissBubble(); prefs.headHidden = true; applyVisibility(); refreshNotification() })
+        }
+        actTop = row(); actBottom = row(); fill(actTop); fill(actBottom)
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; addView(actTop); addView(scroll); addView(actBottom) }
         bubbleRoot = FrameLayout(this).apply {
             background = GradientDrawable().apply { setColor(0xFFFFFFFF.toInt()); cornerRadius = dp(24).toFloat(); setStroke(dp(1), 0x330F2E2C) }
-            elevation = dp(10).toFloat(); visibility = View.GONE; addView(scroll)
-            setOnClickListener { tapIntent?.let { i -> startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)) }; dismissBubble() }
+            elevation = dp(10).toFloat(); visibility = View.GONE; addView(col)
         }
+        bubbleText.setOnClickListener { if (!actionsOn) { tapIntent?.let { i -> startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)) }; dismissBubble() } }
         bubbleLp = WindowManager.LayoutParams(dm.widthPixels - dp(32), WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT).apply { gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL }
@@ -165,29 +171,41 @@ class OverlayService : Service() {
     private fun applyVisibility() = ui.post {
         val vis = if (hiddenByApp || prefs.headHidden) View.GONE else View.VISIBLE
         headRoot.visibility = vis
-        if (vis == View.GONE) { bubbleRoot.visibility = View.GONE; menu.visibility = View.GONE }
+        if (vis == View.GONE) { bubbleRoot.visibility = View.GONE }
     }
     fun setAppHidden(h: Boolean) { if (h != hiddenByApp) { hiddenByApp = h; applyVisibility() } }
 
     // ---- bubble
-    fun show(text: String, ms: Long, tap: Intent?): Boolean = ui.post {
+    private var actionsOn = false
+    private var bubbleH = 0
+    fun show(text: String, ms: Long, tap: Intent?, actions: Boolean = false): Boolean = ui.post {
         if (hiddenByApp || prefs.headHidden) return@post
-        tapIntent = tap; bubbleText.text = text
+        tapIntent = tap; actionsOn = actions; bubbleText.text = text
         val dm = resources.displayMetrics; val maxH = dm.heightPixels / 2
         bubbleText.measure(View.MeasureSpec.makeMeasureSpec(dm.widthPixels - dp(32), View.MeasureSpec.EXACTLY), View.MeasureSpec.UNSPECIFIED)
-        val h = minOf(bubbleText.measuredHeight, maxH)
-        (bubbleRoot.getChildAt(0) as ScrollView).layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, h)
+        scroll.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, minOf(bubbleText.measuredHeight, maxH))
         val typing = System.currentTimeMillis() - lastType < 10_000
         if (typing) { if (savedY < 0) savedY = headLp.y; headLp.y = dp(36); runCatching { wm.updateViewLayout(headRoot, headLp) } }
         else restoreHead()
-        val headY = headLp.y
-        bubbleLp.y = if (headY < dm.heightPixels / 2) headY + dp(76) else maxOf(dp(48), headY - h - dp(12))
-        wm.updateViewLayout(bubbleRoot, bubbleLp)
-        bubbleRoot.visibility = View.VISIBLE; bubbleRoot.alpha = 0f; bubbleRoot.translationY = if (headY < dm.heightPixels / 2) -dp(16).toFloat() else dp(16).toFloat()
-        bubbleRoot.animate().alpha(1f).translationY(0f).setDuration(260).setInterpolator(OvershootInterpolator(1.1f)).start()
+        bubbleRoot.visibility = View.VISIBLE
+        placeBubble()
+        bubbleRoot.alpha = 0f
+        bubbleRoot.animate().alpha(1f).setDuration(220).start()
         reactTo("notify", 0)
         val life = if (ms > 0) ms else (4000L + text.length * 55L).coerceAtMost(20000L)
         ui.removeCallbacks(hideBubble); ui.postDelayed(hideBubble, life)
+    }
+    /** Keeps the bubble glued to the head: below it when the head is high, above it when low. */
+    private fun placeBubble() {
+        if (bubbleRoot.visibility != View.VISIBLE) return
+        val dm = resources.displayMetrics
+        val below = headLp.y < dm.heightPixels / 2
+        actTop.visibility = if (actionsOn && !below) View.VISIBLE else View.GONE
+        actBottom.visibility = if (actionsOn && below) View.VISIBLE else View.GONE
+        bubbleRoot.measure(View.MeasureSpec.makeMeasureSpec(dm.widthPixels - dp(32), View.MeasureSpec.EXACTLY), View.MeasureSpec.UNSPECIFIED)
+        val h = bubbleRoot.measuredHeight
+        bubbleLp.y = if (below) headLp.y + dp(70) else maxOf(dp(24), headLp.y - h - dp(6))
+        runCatching { wm.updateViewLayout(bubbleRoot, bubbleLp) }
     }
     private val hideBubble = Runnable { dismissBubble() }
     private fun restoreHead() { if (savedY >= 0) { headLp.y = savedY; savedY = -1; runCatching { wm.updateViewLayout(headRoot, headLp) } } }
@@ -200,7 +218,8 @@ class OverlayService : Service() {
         if (kind == "typing") lastType = System.currentTimeMillis()
         if (kind == "scroll") { val t = System.currentTimeMillis(); if (t - scrollWin > 90_000) { scrollWin = t; scrolls = 0 }; scrolls++
             if (scrolls >= 30 && t - lastDoom > 10 * 60_000) { lastDoom = t; scrolls = 0; reactTo("warn", 0)
-                show("That is a lot of swiping. You are doom scrolling. Put it down.", 0, null) } }
+                show("That is a lot of swiping. You are doom scrolling. Put it down.", 0, null); setAnger(3)
+                runCatching { Vault.open(this).log("nag", "doomscroll in ${app.nayom.data.Habits.cur}") } } }
         if (headRoot.visibility != View.VISIBLE) return@post
         val now = System.currentTimeMillis(); if (now - lastReact < 350 && kind != "notify") return@post; lastReact = now
         if (watching && kind != "video") unwatch()
@@ -214,6 +233,14 @@ class OverlayService : Service() {
             "video" -> { watching = true }
         }
     }
+    fun setAnger(level: Int) = ui.post {
+        if (level == anger) return@post; anger = level
+        head.colorFilter = when (level) { 0 -> null
+            1 -> android.graphics.PorterDuffColorFilter(0xFFFFC4B8.toInt(), android.graphics.PorterDuff.Mode.MULTIPLY)
+            2 -> android.graphics.PorterDuffColorFilter(0xFFFF8A75.toInt(), android.graphics.PorterDuff.Mode.MULTIPLY)
+            else -> android.graphics.PorterDuffColorFilter(0xFFFF4D3A.toInt(), android.graphics.PorterDuff.Mode.MULTIPLY) }
+        if (level >= 2) reactTo("warn", 0)
+    }
     private fun unwatch() { watching = false }
 
     // every few seconds: are you watching a video?
@@ -221,6 +248,7 @@ class OverlayService : Service() {
         val am = getSystemService(AudioManager::class.java)
         val inVideo = videoApps.any { fgPkg.contains(it) } && System.currentTimeMillis() - lastInput > 6000 && am.isMusicActive
         if (inVideo) reactTo("video", 0) else if (watching) ui.post { unwatch() }
+        angerCheck()
         ui.postDelayed(this, 3000)
     } }
 
@@ -250,6 +278,13 @@ class OverlayService : Service() {
         if (System.currentTimeMillis() - lastChatter > 25 * 60_000 && bubbleRoot.visibility != View.VISIBLE) { lastChatter = System.currentTimeMillis(); show(chatter.random(), 0, null) }
     }
 
+    private fun angerCheck() {
+        val pkg: String = app.nayom.data.Habits.cur; val min = (app.nayom.data.Habits(this).currentMs() / 60000).toInt()
+        var l = if (app.nayom.data.Habits.waster(pkg)) (if (min >= 20) 3 else if (min >= 8) 2 else if (min >= 3) 1 else 0) else 0
+        if (System.currentTimeMillis() - lastDoom < 120_000) l = 3
+        setAnger(l)
+    }
+
     // ---- habits: what you usually do, and how long
     private fun habitsCheck() {
         val h = app.nayom.data.Habits(this); val pkg: String = Habits_cur(); val ms: Long = h.currentMs(); val min: Int = (ms / 60000).toInt()
@@ -260,7 +295,7 @@ class OverlayService : Service() {
             val total = h.wasterToday()
             val line = when (wasteLevel) { 1 -> "$min minutes on $name. Enough." ; 2 -> "$min minutes. I am not asking now. Close $name."
                 else -> "$min minutes on $name. $total minutes wasted today. Do you want to explain this to me?" }
-            reactTo("warn", 0); show(line, 0, null)
+            reactTo("warn", 0); show(line, 0, null); runCatching { Vault.open(this).log("nag", line) }
         } else if (h.opens(pkg) >= 3 && h.usualMin(pkg) > 0 && min >= h.usualMin(pkg) * 2 && min >= 5 && wasteLevel == 0 && !app.nayom.data.Habits.waster(pkg)) {
             wasteLevel = 1; show("You usually stay on $name for ${h.usualMin(pkg)} min. It is $min now.", 0, null)
         }
