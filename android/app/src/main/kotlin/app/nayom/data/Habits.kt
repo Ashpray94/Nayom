@@ -33,14 +33,18 @@ class Habits(private val ctx: Context) {
         val d = LocalDate.now().toString()
         p.edit().putInt("n:$pkg", p.getInt("n:$pkg", 0) + 1).putLong("ms:$pkg", p.getLong("ms:$pkg", 0) + ms)
             .putLong("day:$pkg:$d", p.getLong("day:$pkg:$d", 0) + ms).apply()
-        runCatching { Vault.open(ctx).log("move", "${label(pkg)} ${ms / 60000}m ${ms / 1000 % 60}s") }
+        runCatching { Vault.open(ctx).log("move", "${label(pkg)} ${ms / 60000}m ${ms / 1000 % 60}s"); Brain(ctx).session(pkg, label(pkg), ms, this) }
     }
 
+    fun hourCount(pkg: String, h: Int) = p.getInt("hr:$pkg:$h", 0)
     fun opens(pkg: String) = p.getInt("n:$pkg", 0)
     fun usualMin(pkg: String): Int { val n = opens(pkg); return if (n == 0) 0 else (p.getLong("ms:$pkg", 0) / n / 60000).toInt() }
     fun todayMin(pkg: String): Int = ((p.getLong("day:$pkg:${LocalDate.now()}", 0) + (if (cur == pkg) currentMs() else 0)) / 60000).toInt()
     fun wasterToday(): Int = p.all.keys.filter { it.startsWith("day:") && it.endsWith(LocalDate.now().toString()) && waster(it.substringAfter("day:").substringBefore(":")) }
         .sumOf { p.getLong(it, 0) / 60000 }.toInt() + (if (waster(cur)) (currentMs() / 60000).toInt() else 0)
+
+    /** You open this app around this hour often, and it is a time-waster or you stay long. */
+    fun isPattern(pkg: String): Boolean { val c = hourCount(pkg, LocalTime.now().hour); return c >= 3 && (waster(pkg) || usualMin(pkg) >= 10) }
 
     /** The app you most often open around this hour, if there is a clear habit. */
     fun expectedNow(hour: Int = LocalTime.now().hour): String? {

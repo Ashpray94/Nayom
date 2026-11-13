@@ -70,7 +70,7 @@ class AppState(app: Application) : AndroidViewModel(app) {
         runCatching { calendar.add("$what ($who)", due)?.let { store.log("calendar", "$what -> event $it") } }
         refresh(); back()
     }
-    fun mark(id: String, s: Status, newDue: ZonedDateTime? = null) { store.setStatus(id, s, newDue); if (s == Status.Kept) app.nayom.service.OverlayService.mood("happy", 6000); refresh(); back() }
+    fun mark(id: String, s: Status, newDue: ZonedDateTime? = null) { store.setStatus(id, s, newDue); if (s == Status.Kept) app.nayom.service.OverlayService.mood("happy", 6000); app.nayom.service.OverlayService.say(app.nayom.data.Mom.kept(), 5000); refresh(); back() }
     fun ask(from: String, what: String): String { val a = store.addAsk(from, what); refresh(); return a.id }
     fun decide(id: String, d: Decision) { store.decide(id, d); refresh() }
     fun debrief(id: String, reason: String) { store.addDebrief(id, reason); refresh(); back() }

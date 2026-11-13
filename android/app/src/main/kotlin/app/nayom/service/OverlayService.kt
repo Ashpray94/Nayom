@@ -40,6 +40,7 @@ class OverlayService : Service() {
         @Volatile var instance: OverlayService? = null
         @Volatile var fgPkg: String = ""
         fun say(text: String, ms: Long = 0, tap: Intent? = null) { instance?.show(text, ms, tap, false) }
+        fun opened(pkg: String) { val i = instance ?: return; i.ui.post { i.patternWarn(pkg) } }
         fun appHidden(h: Boolean) { instance?.setAppHidden(h) }
         fun mood(face: String, ms: Long = 3000) { instance?.ui?.post { instance?.setFace(face, ms) } }
         fun react(kind: String, dir: Int = 0) { instance?.reactTo(kind, dir) }
@@ -145,6 +146,13 @@ class OverlayService : Service() {
         setSingleLine(true); layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply { marginStart = dp(6) }
     }
 
+    private fun icon(glyph: String, fg: Int = 0xFF0F2E2C.toInt(), bg: Int = 0xFFFFFFFF.toInt(), click: () -> Unit) = TextView(this).apply {
+        text = glyph; setTextColor(fg); textSize = 17f; gravity = Gravity.CENTER
+        background = GradientDrawable().apply { setColor(bg); shape = GradientDrawable.OVAL; setStroke(dp(1), 0x330F2E2C) }
+        elevation = dp(4).toFloat(); setOnClickListener { click() }
+        layoutParams = LinearLayout.LayoutParams(dp(40), dp(40)).apply { marginStart = dp(8) }
+    }
+
     private fun build() {
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         // head + tap menu
@@ -184,9 +192,9 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
         bubbleText = TextView(this).apply { setTextColor(0xFF0F2E2C.toInt()); textSize = 17f; setLineSpacing(0f, 1.15f); setPadding(dp(20), dp(18), dp(20), dp(18)) }
         scroll = ScrollView(this).apply { addView(bubbleText); isVerticalScrollBarEnabled = false }
         actionsRoot = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.END; visibility = View.GONE; setPadding(dp(4), dp(2), dp(4), dp(2))
-            addView(pill("Open app") { dismissBubble(); startActivity(Intent(this@OverlayService, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) })
-            addView(pill("Messages") { dismissBubble(); startActivity(Intent(this@OverlayService, MainActivity::class.java).putExtra("route", "inbox").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) })
-            addView(pill("Hide head", 0xFFFFFFFF.toInt(), 0xFF22706A.toInt()) { dismissBubble(); prefs.headHidden = true; applyVisibility(); refreshNotification() }) }
+            addView(icon("⌂") { dismissBubble(); startActivity(Intent(this@OverlayService, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) })
+            addView(icon("✉") { dismissBubble(); startActivity(Intent(this@OverlayService, MainActivity::class.java).putExtra("route", "inbox").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) })
+            addView(icon("✕", 0xFFFFFFFF.toInt(), 0xFF22706A.toInt()) { dismissBubble(); prefs.headHidden = true; applyVisibility(); refreshNotification() }) }
         val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; addView(scroll) }
         bubbleRoot = FrameLayout(this).apply {
             background = GradientDrawable().apply { setColor(0xFFFFFFFF.toInt()); cornerRadius = dp(24).toFloat(); setStroke(dp(1), 0x330F2E2C) }
@@ -430,15 +438,22 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
         if (app.nayom.data.Habits.waster(pkg) && min >= 10 * (wasteLevel + 1)) {
             wasteLevel++
             val total = h.wasterToday()
-            val line = when (wasteLevel) { 1 -> "$min minutes on $name. Enough." ; 2 -> "$min minutes. I am not asking now. Close $name."
-                else -> "$min minutes on $name. $total minutes wasted today. Do you want to explain this to me?" }
+            val line = app.nayom.data.Mom.wasted(name, min, total)
             reactTo("warn", 0); show(line, 0, null); runCatching { Vault.open(this).log("nag", line) }
         } else if (h.opens(pkg) >= 3 && h.usualMin(pkg) > 0 && min >= h.usualMin(pkg) * 2 && min >= 5 && wasteLevel == 0 && !app.nayom.data.Habits.waster(pkg)) {
             wasteLevel = 1; show("You usually stay on $name for ${h.usualMin(pkg)} min. It is $min now.", 0, null)
         }
         val hr = java.time.LocalTime.now().hour
         if (hr != lastExpectHr) { lastExpectHr = hr
-            h.expectedNow(hr)?.let { e -> if (e != pkg && app.nayom.data.Habits.waster(e)) show("Around now you open ${h.label(e)} for about ${h.usualMin(e)} min. Not today.", 0, null) } }
+            (app.nayom.data.Mom.meal() ?: if (hr == 0 || hr == 1) app.nayom.data.Mom.late() else null)?.let { show(it, 0, null) } }
+    }
+    private var warnedKey = ""
+    private fun patternWarn(pkg: String) {
+        val h = app.nayom.data.Habits(this); val key = "$pkg@${java.time.LocalDate.now()}-${java.time.LocalTime.now().hour}"
+        if (key == warnedKey || !h.isPattern(pkg)) return
+        warnedKey = key; val n = h.label(pkg)
+        reactTo("warn", 0); show(app.nayom.data.Mom.pattern(n, h.usualMin(pkg), h.opens(pkg)), 0, null)
+        runCatching { Vault.open(this).log("nag", "pattern $n"); app.nayom.data.Brain(this).event("pattern-warning", n, "habit hour") }
     }
     private fun Habits_cur(): String = app.nayom.data.Habits.cur
 

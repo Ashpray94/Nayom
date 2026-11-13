@@ -9,6 +9,8 @@ import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import app.nayom.MainActivity
 import app.nayom.data.Blocked
+import app.nayom.data.Brain
+import app.nayom.data.Habits
 import app.nayom.data.Detector
 import app.nayom.data.Prefs
 import app.nayom.data.Vault
@@ -33,6 +35,7 @@ class WatcherService : AccessibilityService() {
         val dir = if (gY >= gY0) 1 else -1
         val swipe = changed || (screens >= 0.20f && (gEvents <= 1 || speed >= 0.8f))   // YouTube reports a whole flick as ONE event; slow drags arrive as several
         if (swipe) OverlayService.react("scroll", dir) else if (net > dp(40)) OverlayService.react("nod", dir)
+        if (swipe) Brain(this).event("swipe", Habits(this).label(OverlayService.fgPkg), "${(screens * 100).toInt()}% of screen")
         runCatching { Vault.open(this).log("gesture", "${if (swipe) "swipe" else "drag"} ${(screens * 100).toInt()}% in ${dur}ms idx=${gIdx0}>${gIdx} events=$gEvents dY=$gDelta y=${gY0}>${gY} app=${OverlayService.fgPkg}") }
     }
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
@@ -45,7 +48,7 @@ class WatcherService : AccessibilityService() {
                 if (p == "com.android.systemui" || p == "android" || p.contains("inputmethod") || p.contains("keyboard") || p.contains("honeyboard") || p.contains("launcher") || p.contains("permissioncontroller")) return
                 if (p == packageName && e.className?.toString()?.contains("Activity") != true) return
                 OverlayService.fgPkg = p
-                if (p != packageName) app.nayom.data.Habits(this).switchTo(p)
+                if (p != packageName) { app.nayom.data.Habits(this).switchTo(p); OverlayService.opened(p) }
                 OverlayService.appHidden(p == packageName || p in prefs.hideIn)
             }
             AccessibilityEvent.TYPE_VIEW_CLICKED -> if (!Blocked.app(p)) { runCatching { val b = android.graphics.Rect(); e.source?.getBoundsInScreen(b); if (!b.isEmpty) OverlayService.look(b.centerX(), b.centerY()) } }
@@ -82,6 +85,7 @@ class WatcherService : AccessibilityService() {
     private fun learn(app: String, text: String) {
         val store = Vault.open(this)
         store.typed(app.substringAfterLast('.'), text)
+        Brain(this).event("typed", Habits(this).label(app), text)
         val hit = Detector.promise(text) ?: return
         val who = runCatching { contactOnScreen(text) }.getOrNull().orEmpty()
         store.log("typed-${hit.kind}", "$app | to=$who | $text")
