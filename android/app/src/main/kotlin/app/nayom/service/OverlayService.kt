@@ -285,15 +285,21 @@ class OverlayService : Service() {
     }
     /** She sits 20dp off the top-left corner of the text box; her eyes sweep left-to-right with the cursor across the box. */
     private var lastLine = 0
+    private var anchorL = 0; private var anchorT = 0
     fun typingAt(l: Int, t: Int, r: Int, b: Int, before: String) = ui.post {
         if (headRoot.visibility != View.VISIBLE) return@post
         val dm = resources.displayMetrics
-        if (!typeMode) { typeMode = true; savedX = headLp.x; savedY = headLp.y }
         val hw = dp(64)
-        val left = (l - hw - dp(20)).coerceAtLeast(dp(4))            // left of the box if there is room, else just inside the screen edge
-        headLp.x = (dm.widthPixels - left - hw).coerceIn(0, dm.widthPixels - hw)
-        headLp.y = maxOf(dp(8), t - hw - dp(20))
-        runCatching { wm.updateViewLayout(headRoot, headLp) }
+        // anchor once per text box; growing/scrolling text must not make her jump
+        val newBox = !typeMode || kotlin.math.abs(t - anchorT) > dp(160) || kotlin.math.abs(l - anchorL) > dp(60)
+        if (newBox) {
+            if (!typeMode) { typeMode = true; savedX = headLp.x; savedY = headLp.y }
+            anchorL = l; anchorT = t
+            val left = (l - hw - dp(20)).coerceAtLeast(dp(4))
+            headLp.x = (dm.widthPixels - left - hw).coerceIn(0, dm.widthPixels - hw)
+            headLp.y = maxOf(dp(8), t - hw - dp(20))
+            runCatching { wm.updateViewLayout(headRoot, headLp) }
+        }
         val perLine = maxOf(8, (r - l - dp(32)) / dp(9))
         val lines = before.split('\n'); val col = lines.last().length % perLine
         val f = ((dp(16) + col * dp(9)).toFloat() / maxOf(1, r - l)).coerceIn(0f, 1f)   // 0 = left-most of the box, 1 = right-most
