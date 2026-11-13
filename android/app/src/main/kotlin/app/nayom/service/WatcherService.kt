@@ -27,6 +27,7 @@ class WatcherService : AccessibilityService() {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
                 if (p == "com.android.systemui" || p.contains("inputmethod") || p.contains("keyboard")) return
                 OverlayService.fgPkg = p
+                if (p != packageName) app.nayom.data.Habits(this).switchTo(p)
                 OverlayService.appHidden(p == packageName || p in prefs.hideIn)
             }
             AccessibilityEvent.TYPE_VIEW_CLICKED -> if (!Blocked.app(p)) OverlayService.react("click")

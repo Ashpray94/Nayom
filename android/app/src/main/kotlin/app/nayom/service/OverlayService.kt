@@ -63,6 +63,9 @@ class OverlayService : Service() {
     private var lastChatter = System.currentTimeMillis()
     private var lastReact = 0L
     private var lastType = 0L
+    private var scrolls = 0; private var scrollWin = 0L; private var lastDoom = 0L
+    private var lastExpectHr = -1
+    private var wasteLevel = 0; private var wasteApp = ""
     private var savedY = -1
     @Volatile private var lastInput = System.currentTimeMillis()
     private var breathing: ValueAnimator? = null
@@ -195,6 +198,9 @@ class OverlayService : Service() {
     fun reactTo(kind: String, dir: Int) = ui.post {
         if (kind != "video") lastInput = System.currentTimeMillis()
         if (kind == "typing") lastType = System.currentTimeMillis()
+        if (kind == "scroll") { val t = System.currentTimeMillis(); if (t - scrollWin > 90_000) { scrollWin = t; scrolls = 0 }; scrolls++
+            if (scrolls >= 30 && t - lastDoom > 10 * 60_000) { lastDoom = t; scrolls = 0; reactTo("warn", 0)
+                show("That is a lot of swiping. You are doom scrolling. Put it down.", 0, null) } }
         if (headRoot.visibility != View.VISIBLE) return@post
         val now = System.currentTimeMillis(); if (now - lastReact < 350 && kind != "notify") return@post; lastReact = now
         if (watching && kind != "video") unwatch()
@@ -240,8 +246,29 @@ class OverlayService : Service() {
         s.promises().lastOrNull { it.status == Status.Missed && it.id !in s.debriefed() }?.let {
             if (warned.add("miss:${it.id}")) { reactTo("warn", 0); show("You missed ${it.person}'s ${it.what.lowercase()}. Come and tell me why.", 0, Intent(this, MainActivity::class.java)) }
         }
+        habitsCheck()
         if (System.currentTimeMillis() - lastChatter > 25 * 60_000 && bubbleRoot.visibility != View.VISIBLE) { lastChatter = System.currentTimeMillis(); show(chatter.random(), 0, null) }
     }
+
+    // ---- habits: what you usually do, and how long
+    private fun habitsCheck() {
+        val h = app.nayom.data.Habits(this); val pkg = Habits_cur(); val ms = h.currentMs(); val min = (ms / 60000).toInt()
+        if (pkg != wasteApp) { wasteApp = pkg; wasteLevel = 0 }
+        val name = h.label(pkg)
+        if (app.nayom.data.Habits.waster(pkg) && min >= 10 * (wasteLevel + 1)) {
+            wasteLevel++
+            val total = h.wasterToday()
+            val line = when (wasteLevel) { 1 -> "$min minutes on $name. Enough." ; 2 -> "$min minutes. I am not asking now. Close $name."
+                else -> "$min minutes on $name. $total minutes wasted today. Do you want to explain this to me?" }
+            reactTo("warn", 0); show(line, 0, null)
+        } else if (h.opens(pkg) >= 3 && h.usualMin(pkg) > 0 && min >= h.usualMin(pkg) * 2 && min >= 5 && wasteLevel == 0 && !app.nayom.data.Habits.waster(pkg)) {
+            wasteLevel = 1; show("You usually stay on $name for ${h.usualMin(pkg)} min. It is $min now.", 0, null)
+        }
+        val hr = java.time.LocalTime.now().hour
+        if (hr != lastExpectHr) { lastExpectHr = hr
+            h.expectedNow(hr)?.let { e -> if (e != pkg && app.nayom.data.Habits.waster(e)) show("Around now you open ${h.label(e)} for about ${h.usualMin(e)} min. Not today.", 0, null) } }
+    }
+    private fun Habits_cur() = app.nayom.data.Habits.cur
 
     // ---- calls
     private fun watchCalls() {
