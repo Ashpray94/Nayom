@@ -15,6 +15,10 @@ import app.nayom.data.Vault
 
 /** Sees which app you are in, what you do (tap, scroll, type) and what you write. Never reads password fields or banking apps. */
 class WatcherService : AccessibilityService() {
+    companion object { @Volatile var alive = false }
+    override fun onServiceConnected() { alive = true; super.onServiceConnected() }
+    override fun onUnbind(intent: Intent?): Boolean { alive = false; return super.onUnbind(intent) }
+    override fun onDestroy() { alive = false; super.onDestroy() }
     private val ui = Handler(Looper.getMainLooper())
     private var pending: Runnable? = null
     private var lastText = ""

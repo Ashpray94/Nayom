@@ -375,7 +375,16 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
 
     // ---- deadlines and the odd word of nagging
     private val tick = object : Runnable { override fun run() { runCatching { check() }; ui.postDelayed(this, 30_000) } }
+    /** After an update Android can leave the accessibility service enabled but not running. Re-bind it by toggling the setting. */
+    private fun healWatcher() {
+        if (WatcherService.alive || checkSelfPermission("android.permission.WRITE_SECURE_SETTINGS") != android.content.pm.PackageManager.PERMISSION_GRANTED) return
+        val cr = contentResolver; val cur = android.provider.Settings.Secure.getString(cr, "enabled_accessibility_services") ?: return
+        if (!cur.contains(packageName)) return
+        runCatching { android.provider.Settings.Secure.putString(cr, "enabled_accessibility_services", cur.split(':').filter { !it.contains(packageName) }.joinToString(":"))
+            ui.postDelayed({ android.provider.Settings.Secure.putString(cr, "enabled_accessibility_services", cur) }, 1500) }
+    }
     private fun check() {
+        healWatcher()
         val s = Vault.open(this); s.sweepMissed()
         val now = ZonedDateTime.now()
         s.promises().filter { it.status == Status.Open }.forEach { p ->
