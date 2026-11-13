@@ -21,6 +21,8 @@ class WatcherService : AccessibilityService() {
     private var lastScrollY = 0
     private var lastIndex = -1
     private var accDist = 0
+    private var lastDir = 0
+    private var lastCount = 0L
     private var lastMoveAt = 0L
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
@@ -44,10 +46,10 @@ class WatcherService : AccessibilityService() {
                 if (d == 0 && e.fromIndex != lastIndex) d = dm.heightPixels / 2          // pager/reels: one page flip, no pixel delta
                 val dir = if (y >= lastScrollY) 1 else -1
                 lastScrollY = y; lastIndex = e.fromIndex
-                if (now - lastMoveAt > 1200) accDist = 0                                    // a pause starts a fresh gesture
-                lastMoveAt = now; accDist += d
-                if (d > dp(40)) OverlayService.react("nod", dir)                            // small glance for any real movement
-                if (accDist >= dm.heightPixels * 0.40) { accDist = 0; OverlayService.react("scroll", dir) }
+                if (now - lastMoveAt > 1200 || dir != lastDir) accDist = 0                  // a pause or a change of direction (wiggling) starts over
+                lastMoveAt = now; lastDir = dir; accDist += d
+                if (d > dp(40) && accDist + d > dp(60)) OverlayService.react("nod", dir)                            // small glance for any real movement
+                if (accDist >= dm.heightPixels * 0.40 && now - lastCount > 350) { accDist = 0; lastCount = now; OverlayService.react("scroll", dir) }
             }
             AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED -> OverlayService.react("notify")
             AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED -> {
