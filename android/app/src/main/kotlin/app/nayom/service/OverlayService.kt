@@ -55,6 +55,25 @@ class OverlayService : Service() {
     private lateinit var actBottom: LinearLayout
     private lateinit var scroll: ScrollView
     private var anger = 0
+    private var face = "calm"
+    private val faceRes = mapOf("calm" to R.drawable.head_calm, "happy" to R.drawable.head_happy, "stern" to R.drawable.head_stern,
+        "angry" to R.drawable.head_angry, "worried" to R.drawable.head_worried, "sleepy" to R.drawable.head_sleepy)
+    private fun baseFace(): String { val h = java.time.LocalTime.now().hour
+        return if (anger >= 2) "angry" else if (anger == 1) "stern" else if (h >= 23 || h < 5) "sleepy" else "calm" }
+    /** Swaps the face with a quick cross-fade; returns to her resting face after holdMs. */
+    fun setFace(name: String, holdMs: Long = 0) {
+        if (name != face) {
+            val from = head.drawable; val to = resources.getDrawable(faceRes.getValue(name), null)
+            head.setImageDrawable(android.graphics.drawable.TransitionDrawable(arrayOf(from, to)).also { it.isCrossFadeEnabled = true; it.startTransition(160) })
+            face = name
+        }
+        ui.removeCallbacks(restFace)
+        if (holdMs > 0) ui.postDelayed(restFace, holdMs)
+    }
+    private val restFace = Runnable { setFace(baseFace()) }
+    private val blink = object : Runnable { override fun run() {
+        if (face == "calm" || face == "stern") { val f = face; setFace("sleepy"); ui.postDelayed({ if (face == "sleepy") setFace(f) }, 130) }
+        ui.postDelayed(this, 3500L + (Math.random() * 3500).toLong()) } }
     private lateinit var headLp: WindowManager.LayoutParams
     private lateinit var bubbleRoot: FrameLayout
     private lateinit var bubbleText: TextView
@@ -93,7 +112,7 @@ class OverlayService : Service() {
             .setContentIntent(PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE))
             .addAction(Notification.Action.Builder(null, if (prefs.headHidden) "Show head" else "Hide head", showHide).build()).build()
         if (Build.VERSION.SDK_INT >= 34) startForeground(7, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE) else startForeground(7, n)
-        build(); watchCalls(); applyVisibility(); ui.postDelayed(tick, 5000); ui.postDelayed(mood, 3000)
+        build(); watchCalls(); applyVisibility(); ui.postDelayed(tick, 5000); ui.postDelayed(mood, 3000); ui.postDelayed(blink, 4000)
     }
 
     override fun onStartCommand(i: Intent?, f: Int, id: Int): Int {
@@ -123,7 +142,7 @@ class OverlayService : Service() {
     private fun build() {
         wm = getSystemService(WINDOW_SERVICE) as WindowManager
         // head + tap menu
-        head = ImageView(this).apply { setImageResource(R.drawable.head_avatar); elevation = dp(8).toFloat()
+        head = ImageView(this).apply { setImageResource(R.drawable.head_calm); elevation = dp(8).toFloat()
             layoutParams = LinearLayout.LayoutParams(dp(64), dp(64)) }
         headRoot = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.END; addView(head) }
         headLp = WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
@@ -232,8 +251,8 @@ class OverlayService : Service() {
         }
         when (kind) {
             "scroll" -> pose(0f, if (dir >= 0) -20f else 20f, 0f, 140, 450)          // nods up/down with the content
-            "notify" -> pose(0f, -24f, 0f, 200, 900)                                  // looks up at the notification
-            "warn" -> head.animate().rotationY(-26f).setDuration(150).withEndAction { head.animate().rotationY(26f).setDuration(260).withEndAction { head.animate().rotationY(-18f).setDuration(220).withEndAction { head.animate().rotationY(0f).setDuration(260).start() }.start() }.start() }.start() // slow "no"
+            "notify" -> { setFace("worried", 1600); pose(0f, -24f, 0f, 200, 900) }                                  // looks up at the notification
+            "warn" -> { setFace(if (anger >= 2) "angry" else "stern", 2400); head.animate().rotationY(-26f).setDuration(150).withEndAction { head.animate().rotationY(26f).setDuration(260).withEndAction { head.animate().rotationY(-18f).setDuration(220).withEndAction { head.animate().rotationY(0f).setDuration(260).start() }.start() }.start() }.start() } // slow "no"
             "video" -> { watching = true; head.animate().rotationY(0f).rotationX(8f).setDuration(500).start() }
         }
     }
@@ -251,9 +270,9 @@ class OverlayService : Service() {
     fun setAnger(level: Int) = ui.post {
         if (level == anger) return@post; anger = level
         head.colorFilter = when (level) { 0 -> null
-            1 -> android.graphics.PorterDuffColorFilter(0xFFFFC4B8.toInt(), android.graphics.PorterDuff.Mode.MULTIPLY)
-            2 -> android.graphics.PorterDuffColorFilter(0xFFFF8A75.toInt(), android.graphics.PorterDuff.Mode.MULTIPLY)
-            else -> android.graphics.PorterDuffColorFilter(0xFFFF4D3A.toInt(), android.graphics.PorterDuff.Mode.MULTIPLY) }
+            1, 2 -> null
+            else -> android.graphics.PorterDuffColorFilter(0xFFFF9080.toInt(), android.graphics.PorterDuff.Mode.MULTIPLY) }
+        setFace(baseFace())
         if (level >= 2) reactTo("warn", 0)
     }
     /** She sits on the text box and looks toward the cursor while you type; looks back at you when you stop. */
