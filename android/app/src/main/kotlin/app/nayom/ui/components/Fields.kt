@@ -63,6 +63,14 @@ fun Illustration(name: String, accent: androidx.compose.ui.graphics.Color, size:
     }
 }
 
+/** The mother. Only on moments that matter (intro, missed, gate, debrief). */
+@Composable
+fun Mom(name: String, size: Int = 280) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val id = ctx.resources.getIdentifier("mom_$name", "drawable", ctx.packageName)
+    androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(id), null, Modifier.size(size.dp))
+}
+
 /** Empty or celebration state: illustration, one serif line, one plain sentence. The action sits in the screen's bottom actions. */
 @Composable
 fun Empty(art: String, accent: androidx.compose.ui.graphics.Color, line: String, sentence: String, modifier: Modifier = Modifier) =

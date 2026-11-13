@@ -290,7 +290,7 @@ fun OnboardingScreen(st: AppState, step: Int) {
             if (step < 2) st.route = Route.Onboarding(step + 1) else st.finishOnboarding()
         }
     }, scroll = true) {
-        Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.Center) { Illustration(art, colors.teal, 300) }
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.Center) { Mom(art, 300) }
         Text(line, style = NayomType.display.copy(fontSize = 38.sp, lineHeight = 44.sp), color = colors.ink, textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.fillMaxWidth())
         Text(text, style = NayomType.body, color = colors.muted, modifier = Modifier.fillMaxWidth())
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { Label("${step + 1} of 3") }
