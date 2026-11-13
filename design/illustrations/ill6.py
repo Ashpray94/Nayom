@@ -21,26 +21,24 @@ BODY="M99 102C90 114 82 130 80 152C77 180 92 205 122 213C146 219 166 209 166 193
 BODY2="M121 102C128 114 134 128 138 144C144 162 152 174 162 178"
 def L(x): return 220-x   # mirror about the head's centre line
 def pth(pts): return pts
-def eye_pair(open_, dx=0, dy=0, r=3.4):
-    up=(1-open_)*5
-    def one(mirror):
-        X=(lambda x: L(x)) if mirror else (lambda x: x)
-        o=(X(86),66); i=(X(104),62)
-        c1=(X(91),58+up); c2=(X(99),57+up)
-        l1=(X(99),62+10*open_); l2=(X(91),66+8*open_)
-        return f"M{o[0]} {o[1]}C{c1[0]} {c1[1]:.1f} {c2[0]} {c2[1]:.1f} {i[0]} {i[1]}C{l1[0]} {l1[1]:.1f} {l2[0]} {l2[1]:.1f} {o[0]} {o[1]}Z", \
-               f"M{o[0]} {o[1]}C{c1[0]} {c1[1]:.1f} {c2[0]} {c2[1]:.1f} {i[0]} {i[1]}C{X(99)} {60+up:.1f} {X(91)} {62+up/2:.1f} {o[0]} {o[1]}Z"
-    (lo,lc),(ro,rc)=one(False),one(True)
-    cy=65+dy+(1-open_)*2
-    return [lo,ro],[ell(96+dx,cy,r,r),ell(124+dx,cy,r,r),lc,rc]
-def brows(lo,li,ro,ri,arch=5):
-    return [f"M85 {lo}C91 {lo-arch} 98 {li-arch} 103 {li}", f"M135 {ro}C129 {ro-arch} 122 {ri-arch} 117 {ri}"]
-MOUTH={"smile":"M102 84C107 88 114 88 119 84","smirk":"M102 85C107 88 114 88 120 82","soft":"M104 85C108 87 113 87 117 85",
-       "flat":"M103 86C108 85 113 86 117 84","oh":None,"line":"M105 86H115"}
+def solid_eye(h, mirror, droop=0):
+    X=(lambda x: L(x)) if mirror else (lambda x: x)
+    # solid leaf: outer corner a touch lower, flatter top when the lid is heavy
+    top=h*.55
+    return (f"M{X(86)} {66+droop}C{X(91)} {62-top+droop*.5:.1f} {X(99)} {61-top:.1f} {X(105)} 63"
+            f"C{X(100)} {63+h*.7:.1f} {X(92)} {67+h*.5+droop*.3:.1f} {X(86)} {66+droop}Z")
+def solid_brow(yo,yi,mirror,t=2.4,arch=4):
+    X=(lambda x: L(x)) if mirror else (lambda x: x)
+    return (f"M{X(85)} {yo}C{X(91)} {yo-arch} {X(98)} {yi-arch} {X(104)} {yi}"
+            f"L{X(104)} {yi+t}C{X(98)} {yi-arch+t*.6:.1f} {X(91)} {yo-arch+t*.5:.1f} {X(85)} {yo}Z")
+MOUTHS={"smile":"M103 84C107 88 114 88 118 83C114 86.4 107 86.4 103 84Z","smirk":"M103 85C107 88.4 114 88 120 82C114 85.6 107 86.2 103 85Z",
+        "soft":"M104 85C108 87.6 113 87.6 117 84.6C113 86.4 108 86.4 104 85Z","flat":"M104 86.5C109 85.6 113 85.8 117 84.4C113 86.8 109 87.4 104 86.5Z",
+        "line":"M105 86C109 85.4 112 85.4 115 86C112 86.6 109 86.6 105 86Z"}
 def face_parts(op,dx,dy,b,mouth,r=3.4):
-    e,d=eye_pair(op,dx,dy,r)
-    m=[MOUTH[mouth]] if MOUTH[mouth] else [ell(110,86,3,4)]
-    return e+brows(*b)+m, d
+    h=2+op*7
+    parts=[solid_eye(h,False),solid_eye(h,True),solid_brow(b[0],b[1],False),solid_brow(b[2],b[3],True)]
+    parts.append(ell(110,86,2.6,3.6) if mouth=="oh" else MOUTHS[mouth])
+    return [],parts
 FACES={ # open, look dx, look dy, brows (outerL,innerL,outerR,innerR), mouth
  "serene": (.55,0,1.2,(54,55,54,55),"soft"),
  "tender": (.8,-1.2,1,(54,56,54,56),"smirk"),
@@ -56,6 +54,7 @@ def eyes(kind):
         return ["M86 68C89 57 101 57 104 68","M116 68C119 57 131 57 134 68","M86 49C91 45 100 45 104 49","M134 49C129 45 120 45 116 49","M99 83C107 92 113 92 121 83"],[]
     if kind=="sleep":
         return ["M86 62C89 72 101 72 104 62","M116 62C119 72 131 72 134 62","M103 86C108 89 112 89 117 86"],[]
+CLASP=["M121 110C146 118 150 146 126 152","M99 110C80 120 86 146 112 152","M112 152C118 156 124 156 128 152"]
 def arms(): return ["M121 110C147 116 153 144 133 160C123 168 108 166 97 158"]
 def robot(kind):
     e,d=eyes(kind)
@@ -63,16 +62,16 @@ def robot(kind):
     hairs=[rot(x,-5,110,102) for x in [HAIR,BUN]]
     return head+[BODY,BODY2], d, hairs
 S={}
-def scene(n,col,kind,prop_line,prop_fill,tx=6,ty=6,sc=1.0,front=None,extra=()):
+def scene(n,col,kind,prop_line,prop_fill,tx=6,ty=6,sc=1.0,front=None,extra=(),hands=False):
     rb,d,br=robot(kind)
     dots=[rot(x,-5,110,102) for x in d]
-    S[n]=dict(col=col,robot=rb,dots=dots,brand=br,prop=prop_line,fill=prop_fill,arms=arms(),extra=list(extra),tx=tx,ty=ty,sc=sc)
+    S[n]=dict(col=col,robot=rb,dots=dots,brand=br,prop=prop_line,fill=prop_fill,arms=(CLASP if hands else arms()),extra=list(extra),tx=tx,ty=ty,sc=sc)
 H=heart(114,136,.85)
 scene("nothing_owed","#B3265B","tender",[H],[H])
 CK=circ(114,134,19)
 scene("all_kept","#23706B","tender",[CK,"M105 134L112 141L124 125"],[CK],extra=["M174 40V52M168 46H180","M30 70V80M25 75H35","M180 110V118M176 114H184"])
-SUN="M94 148A21 21 0 0 1 136 148Z"
-scene("clear_sky","#F5A524","serene",[SUN,"M86 148H144","M115 114V124","M135 120L130 127","M95 120L100 127"],[SUN])
+SUN="M152 172A38 38 0 0 1 228 172Z"
+scene("clear_sky","#F5A524","serene",["M142 172H238","M190 120V132","M222 130L215 138","M158 130L165 138"],[SUN],tx=-14,ty=6,hands=True)
 PG="M98 116H132V154H98Z"
 scene("blank_page","#F5A524","watchful",[PG,"M104 128H126","M104 138H118"],[PG])
 MN="M122 116A22 22 0 1 0 132 156A17 17 0 0 1 122 116Z"
