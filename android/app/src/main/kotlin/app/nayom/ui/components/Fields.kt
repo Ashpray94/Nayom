@@ -51,6 +51,11 @@ fun Title(text: String, warm: Boolean = false, color: androidx.compose.ui.graphi
 fun Illustration(name: String, accent: androidx.compose.ui.graphics.Color, size: Int = 260) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     fun id(suffix: String) = ctx.resources.getIdentifier("ill_${name}_$suffix", "drawable", ctx.packageName)
+    val art = ctx.resources.getIdentifier("art_$name", "drawable", ctx.packageName)
+    if (art != 0) {
+        androidx.compose.foundation.Image(androidx.compose.ui.res.painterResource(art), null, Modifier.size(size.dp))
+        return
+    }
     Box(Modifier.size(size.dp)) {
         Icon(id("brand"), colors.teal.copy(alpha = .45f), size)
         Icon(id("fill"), accent.copy(alpha = .38f), size)
