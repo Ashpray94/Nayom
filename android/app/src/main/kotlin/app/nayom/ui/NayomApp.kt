@@ -33,11 +33,12 @@ fun NayomApp() {
                 Tab.Notes -> EveningScreen()
             }
         }
-        Row(Modifier.fillMaxWidth().background(colors.surface).padding(vertical = 10.dp)) {
+        Row(Modifier.fillMaxWidth().background(colors.surface).navigationBarsPadding().padding(top = 12.dp, bottom = 8.dp)) {
             Tab.values().forEach { t ->
                 val on = t == tab
                 Column(Modifier.weight(1f).clickable { tab = t }, horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(if (on) t.active else t.icon, if (on) colors.teal else colors.muted)
+                    Spacer(Modifier.height(6.dp))
                     Text(t.label.uppercase(), style = NayomType.label, color = if (on) colors.teal else colors.muted)
                 }
             }
