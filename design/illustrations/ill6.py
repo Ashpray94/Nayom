@@ -21,40 +21,55 @@ BODY="M99 102C90 114 82 130 80 152C77 180 92 205 122 213C146 219 166 209 166 193
 BODY2="M121 102C128 114 134 128 138 144C144 162 152 174 162 178"
 def L(x): return 220-x   # mirror about the head's centre line
 def pth(pts): return pts
-def solid_eye(h, mirror, droop=0):
-    """Eye and brow in one stroke: a round pupil near the nose whose comma tail arcs up and out over it like an eyebrow."""
-    X=(lambda x: L(x)) if mirror else (lambda x: x)
-    r=3.0+h*.2; cx=101.0; cy=67.2; lift=60.6-h*.1
-    return (f"M{X(83.5)} 67.2C{X(89)} {lift-.6:.1f} {X(96)} {lift-1.2:.1f} {X(cx-r*.6)} {cy-r*.95:.1f}"
-            f"C{X(cx+r*.2)} {cy-r*1.05:.1f} {X(cx+r)} {cy-r*.6:.1f} {X(cx+r)} {cy:.1f}"
-            f"C{X(cx+r)} {cy+r*.7:.1f} {X(cx+r*.55)} {cy+r:.1f} {X(cx)} {cy+r:.1f}"
-            f"C{X(cx-r*.75)} {cy+r:.1f} {X(cx-r*1.05)} {cy+r*.3:.1f} {X(cx-r*1.05)} {cy-r*.1:.1f}"
-            f"C{X(97)} {lift+2.4:.1f} {X(90)} {lift+2.6:.1f} {X(83.5)} 67.2Z")
-def solid_brow(yo,yi,mirror,t=2.4,arch=4):
-    X=(lambda x: L(x)) if mirror else (lambda x: x)
-    return (f"M{X(85)} {yo}C{X(91)} {yo-arch} {X(98)} {yi-arch} {X(104)} {yi}"
-            f"L{X(104)} {yi+t}C{X(98)} {yi-arch+t*.6:.1f} {X(91)} {yo-arch+t*.5:.1f} {X(85)} {yo}Z")
-MOUTHS={"smile":"M103 84C107 88 114 88 118 83C114 86.4 107 86.4 103 84Z","smirk":"M103 85C107 88.4 114 88 120 82C114 85.6 107 86.2 103 85Z",
-        "soft":"M104 85C108 87.6 113 87.6 117 84.6C113 86.4 108 86.4 104 85Z","flat":"M104 86.5C109 85.6 113 85.8 117 84.4C113 86.8 109 87.4 104 86.5Z",
-        "line":"M105 86C109 85.4 112 85.4 115 86C112 86.6 109 86.6 105 86Z"}
-TILT={"stern":6,"worried":-7,"wry":2,"tender":-3,"serene":-3,"watchful":-4}
-def face_parts(op,dx,dy,b,mouth,r=3.4,tilt=0):
-    """No eyebrows (D-30): expression = eye openness, eye tilt, mouth."""
-    h=2+op*7
-    parts=[rot(solid_eye(h,False),tilt,96,65),rot(solid_eye(h,True),-tilt,124,65)]
-    parts.append(ell(110,86,2.6,3.6) if mouth=="oh" else MOUTHS[mouth])
-    return [],parts
-FACES={ # open, look dx, look dy, brows (outerL,innerL,outerR,innerR), mouth
- "serene": (.55,0,1.2,(54,55,54,55),"soft"),
- "tender": (.8,-1.2,1,(54,56,54,56),"smirk"),
- "wry":    (.7,1.2,0,(52,52,56,57),"smirk"),
- "stern":  (.45,0,0,(50,57,50,57),"flat"),
- "worried":(.85,0,.5,(57,51,57,51),"oh"),
- "watchful":(1,0,-1.5,(55,54,55,54),"line"),
+def bez(p0,c1,c2,p3,t):
+    u=1-t; return (u**3*p0[0]+3*u*u*t*c1[0]+3*u*t*t*c2[0]+t**3*p3[0], u**3*p0[1]+3*u*u*t*c1[1]+3*u*t*t*c2[1]+t**3*p3[1])
+def dbez(p0,c1,c2,p3,t):
+    u=1-t; return (3*u*u*(c1[0]-p0[0])+6*u*t*(c2[0]-c1[0])+3*t*t*(p3[0]-c2[0]), 3*u*u*(c1[1]-p0[1])+6*u*t*(c2[1]-c1[1])+3*t*t*(p3[1]-c2[1]))
+def brush(p0,c1,c2,p3,w0,w1=.15,n=26):
+    """A brush flick: a cubic centre-line that tapers from w0 to w1, as a closed filled outline."""
+    L_,R_=[],[]
+    for i in range(n+1):
+        t=i/n; x,y=bez(p0,c1,c2,p3,t); dx,dy=dbez(p0,c1,c2,p3,t); m=math.hypot(dx,dy) or 1
+        nx,ny=-dy/m,dx/m; w=(w0*(1-t)**.85+w1*t)/2
+        L_.append((x+nx*w,y+ny*w)); R_.append((x-nx*w,y-ny*w))
+    pts=L_+R_[::-1]
+    return "M"+"L".join(f"{x:.2f} {y:.2f}" for x,y in pts)+"Z"
+def mir(pt): return (L(pt[0]),pt[1])
+def dot(cx,cy,rx,ry,mirror): return ell(L(cx) if mirror else cx,cy,rx,ry)
+def tail(spec,mirror):
+    P=[(mir(p) if mirror else p) for p in spec[:4]]
+    return brush(P[0],P[1],P[2],P[3],spec[4],spec[5] if len(spec)>5 else .15)
+# Each face is a pair of brush-drawn eyes (a dot plus a flick tail) and a tiny mouth, after the hand sketches (D-31).
+# eye = (dot cx,cy,rx,ry), tail = (p0,c1,c2,p3,w0[,w1]); left eye drawn, right = mirror unless given.
+EYES={
+ # 1 lofty / stern: a long flat sweep on one side, a short hook on the other
+ "stern":   dict(L=((98,67.5,3.7,4.3),((96,62.4),(91,59.6),(86,59.4),(79,61.2),3.4)), R=((122,67.5,3.7,4.3),((123,62),(126,57.2),(132,57.2),(137,62),2.8)), mouth="drop"),
+ # 2 wry: small dots, tails rising outward
+ "wry":     dict(L=((98,67,3.1,2.9),((95,64.2),(90,63),(85,61),(80,58.4),2.6)), R=None, mouth="dash"),
+ # 3 firm: steeper V
+ "firm":    dict(L=((98,67,3.0,2.8),((95.5,65),(90,63.4),(85,60.6),(80.5,56.6),2.6)), R=None, mouth="blob"),
+ # 4 playful / kind: dots cupped by a curling hook
+ "tender":  dict(L=((99,67.4,3.7,3.4),((96,62.6),(91,57.8),(85.5,60.4),(86.5,66.4),2.2,.5)), R=None, mouth="smile"),
+ "serene":  dict(L=((99,67.6,3.6,3.2),((96,62.8),(91,58.6),(86,60.8),(86.5,66.2),2.0,.5)), R=None, mouth="soft"),
+ "watchful":dict(L=((99,67.4,3.5,3.8),((96,62.4),(91.5,58.4),(86.5,60.4),(87,65.6),2.0,.5)), R=None, mouth="line"),
+ # 5 wide-eyed: tall oval pupils with a small hook above
+ "worried": dict(L=((99.5,68,2.9,5.0),((97.5,62),(95.5,57.4),(91,57.6),(89,61.6),2.0,.4)), R=None, mouth="oh"),
 }
+MOUTHS={"smile":"M104 83.5C108 87.4 112 87.4 116 83.5C112 85.6 108 85.6 104 83.5Z","soft":"M105 84.2C108.5 86.6 111.5 86.6 115 84.2C111.5 85.6 108.5 85.6 105 84.2Z",
+        "dash":"M105.5 85.5H114.5L114.5 86.4H105.5Z","line":"M105 85.5C108 85 112 85 115 85.5C112 86.1 108 86.1 105 85.5Z",
+        "blob":ell(110,85.6,2.6,2.2),"drop":"M106.6 82.6C108.4 81 111.6 81 113.4 82.6C112.6 84.6 111.4 85.8 110 86.6C108.6 85.8 107.4 84.6 106.6 82.6Z",
+        "oh":ell(110,86,2.7,3.8)}
+def face_parts(kind):
+    E=EYES[kind]; parts=[]
+    (dx,dy,rx,ry),tl=E["L"]; parts+= [dot(dx,dy,rx,ry,False),tail(tl,False)]
+    R=E["R"]
+    if R is None: parts+=[dot(dx,dy,rx,ry,True),tail(tl,True)]
+    else:
+        (rdx,rdy,rrx,rry),rtl=R; parts+=[ell(rdx,rdy,rrx,rry),brush(rtl[0],rtl[1],rtl[2],rtl[3],rtl[4],.15)]
+    parts.append(MOUTHS[E["mouth"]])
+    return [],parts
 def eyes(kind):
-    if kind in FACES:
-        op,dx,dy,b,m=FACES[kind]; return face_parts(op,dx,dy,b,m,tilt=TILT.get(kind,0))
+    if kind in EYES: return face_parts(kind)
     if kind=="happy":
         return ["M86 68C89 57 101 57 104 68","M116 68C119 57 131 57 134 68","M86 49C91 45 100 45 104 49","M134 49C129 45 120 45 116 49","M99 83C107 92 113 92 121 83"],[]
     if kind=="sleep":
@@ -82,7 +97,7 @@ scene("blank_page","#F5A524","watchful",[PG,"M104 128H126","M104 138H118"],[PG])
 MN="M122 116A22 22 0 1 0 132 156A17 17 0 0 1 122 116Z"
 scene("quiet_day","#2563B8","sleep",[MN],[MN],extra=["M176 50V60M171 55H181","M30 96V104M26 100H34"])
 scene("no_one_yet","#2563B8","watchful",[],[],extra=[circ(182,90,10),"M164 134C164 116 173 110 182 110C191 110 200 116 200 134"])
-for k in ("stern","worried","wry"): scene("face_"+k,"#B3265B",k,[],[])
+for k in ("stern","worried","wry","firm"): scene("face_"+k,"#B3265B",k,[],[])
 json.dump(S,open("scenes6.json","w"))
 def svg(names,SW=1.6,cols=5):
     out=""
