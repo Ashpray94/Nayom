@@ -187,8 +187,7 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
             addView(pill("Open app") { dismissBubble(); startActivity(Intent(this@OverlayService, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) })
             addView(pill("Messages") { dismissBubble(); startActivity(Intent(this@OverlayService, MainActivity::class.java).putExtra("route", "inbox").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) })
             addView(pill("Hide head", 0xFFFFFFFF.toInt(), 0xFF22706A.toInt()) { dismissBubble(); prefs.headHidden = true; applyVisibility(); refreshNotification() }) }
-        fixCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE; setPadding(0, 0, 0, dp(10)) }
-        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; addView(scroll); addView(fixCol) }
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; addView(scroll) }
         bubbleRoot = FrameLayout(this).apply {
             background = GradientDrawable().apply { setColor(0xFFFFFFFF.toInt()); cornerRadius = dp(24).toFloat(); setStroke(dp(1), 0x330F2E2C) }
             elevation = dp(10).toFloat(); visibility = View.GONE; addView(col)
@@ -202,13 +201,23 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT).apply { gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL }
         wm.addView(actionsRoot, actionsLp)
+        fixRows = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        fixRoot = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE; setPadding(0, dp(12), 0, dp(8)); elevation = dp(10).toFloat()
+            background = GradientDrawable().apply { setColor(0xFFFFFFFF.toInt()); cornerRadius = dp(24).toFloat(); setStroke(dp(2), 0xFFD93025.toInt()) }
+            addView(TextView(this@OverlayService).apply { tag = "title"; setTextColor(0xFFD93025.toInt()); textSize = 13f; typeface = Typeface.DEFAULT_BOLD; letterSpacing = 0.08f; setPadding(dp(18), 0, dp(18), dp(6)) })
+            addView(fixRows) }
+        fixLp = WindowManager.LayoutParams(dm.widthPixels - dp(32), WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT).apply { gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL; y = dp(36) }
+        wm.addView(fixRoot, fixLp)
     }
 
     // ---- show/hide
     private fun applyVisibility() = ui.post {
         val vis = if (hiddenByApp || prefs.headHidden) View.GONE else View.VISIBLE
         headRoot.visibility = vis
-        if (vis == View.GONE) { bubbleRoot.visibility = View.GONE; actionsRoot.visibility = View.GONE }
+        if (vis == View.GONE) { bubbleRoot.visibility = View.GONE; actionsRoot.visibility = View.GONE; fixRoot.visibility = View.GONE }
+        else if (lastFixes.isNotEmpty()) fixRoot.visibility = View.VISIBLE
     }
     fun setAppHidden(h: Boolean) { if (h != hiddenByApp) { hiddenByApp = h; applyVisibility() } }
 
@@ -218,7 +227,6 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
     fun show(text: String, ms: Long, tap: Intent?, actions: Boolean = false): Boolean = ui.post {
         if (hiddenByApp || prefs.headHidden) return@post
         tapIntent = tap; actionsOn = actions; bubbleText.text = text
-        if (!text.contains("mistake") && !text.contains("Mistakes")) fixCol.visibility = View.GONE
         val dm = resources.displayMetrics; val maxH = dm.heightPixels / 2
         bubbleText.measure(View.MeasureSpec.makeMeasureSpec(dm.widthPixels - dp(32), View.MeasureSpec.EXACTLY), View.MeasureSpec.UNSPECIFIED)
         scroll.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, minOf(bubbleText.measuredHeight, maxH))
@@ -238,7 +246,7 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
         bubbleRoot.measure(View.MeasureSpec.makeMeasureSpec(dm.widthPixels - dp(32), View.MeasureSpec.EXACTLY), View.MeasureSpec.UNSPECIFIED)
         val h = bubbleRoot.measuredHeight; val ah = if (actionsOn) dp(52) else 0
         val by: Int; val ay: Int
-        if (typeMode) { by = dp(36); ay = by + h + dp(8) }
+        if (typeMode) { by = dp(36) + (if (fixRoot.visibility == View.VISIBLE) fixRoot.height + dp(8) else 0); ay = by + h + dp(8) }
         else if (below) { by = headLp.y + dp(70); ay = by + h + dp(8) }
         else { by = maxOf(dp(24) + ah, headLp.y - h - dp(6)); ay = by - ah }
         bubbleLp.y = by; runCatching { wm.updateViewLayout(bubbleRoot, bubbleLp) }
@@ -259,7 +267,7 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
             if (fgPkg != swipePkg || tt - lastSwipe > 5 * 60_000) { swipePkg = fgPkg; swipes = 0; swipeSince = tt }
             lastSwipe = tt; swipes++
             scrollLvl = if (swipes >= 40) 3 else if (swipes >= 20) 2 else if (swipes >= 8) 1 else 0
-            counter?.apply { text = swipes.toString(); visibility = if (swipes >= 3) View.VISIBLE else View.GONE
+            counter?.apply { text = swipes.toString(); visibility = if (swipes >= 3 && app.nayom.data.Habits.waster(fgPkg)) View.VISIBLE else View.GONE
                 background = GradientDrawable().apply { cornerRadius = dp(12).toFloat(); setColor(if (scrollLvl >= 2) 0xFFD93025.toInt() else if (scrollLvl == 1) 0xFFE8872E.toInt() else 0xFF22706A.toInt()); setStroke(dp(2), 0xFFFFFFFF.toInt()) } }
             if (typeMode.not()) setFace(baseFace())
             val t = tt; if (t - scrollWin > 90_000) { scrollWin = t; scrolls = 0 }; scrolls++
@@ -331,37 +339,39 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
     }
     // ---- mistakes: red numbered badges
     private var badge: TextView? = null
-    private lateinit var fixCol: LinearLayout
+    private lateinit var fixRoot: LinearLayout
+    private lateinit var fixRows: LinearLayout
+    private lateinit var fixLp: WindowManager.LayoutParams
     private var lastFixes = listOf<String>()
     private var swipeSince = 0L
     private fun fillFixes(list: List<String>) {
-        fixCol.removeAllViews()
+        (fixRoot.getChildAt(0) as TextView).text = "${list.size} MISTAKE${if (list.size > 1) "S" else ""} TO CORRECT"
+        fixRows.removeAllViews()
         list.forEachIndexed { i, m ->
-            fixCol.addView(LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(16), dp(4), dp(16), dp(4))
+            fixRows.addView(LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(16), dp(5), dp(16), dp(5))
                 addView(TextView(context).apply { text = "${i + 1}"; setTextColor(0xFFFFFFFF.toInt()); textSize = 12f; typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.CENTER
-                    background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(0xFFD93025.toInt()) }; layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)) })
-                addView(TextView(context).apply { text = m; setTextColor(0xFF0F2E2C.toInt()); textSize = 15f; setPadding(dp(10), 0, 0, 0) }) })
+                    background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(0xFFD93025.toInt()) }; layoutParams = LinearLayout.LayoutParams(dp(24), dp(24)) })
+                addView(TextView(context).apply { text = m; setTextColor(0xFF0F2E2C.toInt()); textSize = 16f; setPadding(dp(12), 0, 0, 0) }) })
         }
-        fixCol.visibility = if (list.isEmpty()) View.GONE else View.VISIBLE
     }
+    /** All mistakes, one after another, in their own message. It stays until every one is corrected; only then does the red badge appear/vanish. */
     fun showFixes(list: List<String>) = ui.post {
         lastFixes = list
-        badge?.apply { visibility = if (list.isEmpty()) View.GONE else View.VISIBLE; text = list.size.toString() }
-        fixCol.removeAllViews()
-        if (list.isEmpty() || headRoot.visibility != View.VISIBLE) return@post
+        if (list.isEmpty()) { fixRoot.visibility = View.GONE; badge?.visibility = View.GONE; return@post }
+        if (headRoot.visibility != View.VISIBLE) return@post
+        val first = fixRoot.visibility != View.VISIBLE
         fillFixes(list)
-        show("${list.size} mistake${if (list.size > 1) "s" else ""}. Fix them before you send.", 9000, null)
-        setFace("stern", 3000)
+        if (first) { fixRoot.visibility = View.VISIBLE; fixRoot.alpha = 0f; fixRoot.animate().alpha(1f).setDuration(220).start(); setFace("stern", 3000); reactTo("warn", 0) }
+        // message first, badge after
+        ui.postDelayed({ badge?.apply { visibility = if (lastFixes.isEmpty()) View.GONE else View.VISIBLE; text = lastFixes.size.toString() } }, if (first) 600 else 0)
     }
     /** Tap on the head: say exactly what each badge on it is counting. */
     private fun explainBadges() {
         val h = app.nayom.data.Habits(this); val parts = mutableListOf<String>()
         if (swipes >= 3) parts += "Orange/red number: $swipes swipes in ${h.label(swipePkg)} since ${java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()).format(java.util.Date(swipeSince))}. Only real flicks that moved the screen count. Slow drags and wiggles do not."
-        if (lastFixes.isNotEmpty()) parts += "Red badge: ${lastFixes.size} mistake${if (lastFixes.size > 1) "s" else ""} in what you last typed:"
+        if (lastFixes.isNotEmpty()) parts += "Red badge: ${lastFixes.size} mistake${if (lastFixes.size > 1) "s" else ""} in what you last typed (spelling and sloppy writing). They are listed at the top and stay until you correct them."
         if (parts.isEmpty()) { show(summary(), 9000, null, true); return }
-        if (lastFixes.isNotEmpty()) fillFixes(lastFixes)
-        show(parts.joinToString("\n\n") + (if (lastFixes.isNotEmpty()) "\n(Mistakes mean spelling and sloppy writing, listed below.)" else ""), 14000, null, true)
-        if (lastFixes.isNotEmpty()) fixCol.visibility = View.VISIBLE
+        show(parts.joinToString("\n\n"), 14000, null, true)
     }
     private val backToMe = Runnable {
         if (!typeMode) return@Runnable
@@ -458,5 +468,5 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
         }
     }
 
-    override fun onDestroy() { instance = null; breathing?.cancel(); ui.removeCallbacksAndMessages(null); runCatching { wm.removeView(headRoot); wm.removeView(bubbleRoot); wm.removeView(actionsRoot) }; super.onDestroy() }
+    override fun onDestroy() { instance = null; breathing?.cancel(); ui.removeCallbacksAndMessages(null); runCatching { wm.removeView(headRoot); wm.removeView(bubbleRoot); wm.removeView(actionsRoot); wm.removeView(fixRoot) }; super.onDestroy() }
 }
