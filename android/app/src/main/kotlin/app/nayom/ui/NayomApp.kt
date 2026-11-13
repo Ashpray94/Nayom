@@ -8,7 +8,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import app.nayom.R
 import app.nayom.ui.components.Icon
@@ -53,9 +55,11 @@ fun NayomApp(st: AppState = viewModel()) {
             Tab.entries.forEachIndexed { i, t ->
                 val on = i == st.tab
                 Column(Modifier.weight(1f).clickable { st.tab = i }, horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(if (on) t.active else t.icon, if (on) colors.teal else colors.muted)
-                    Spacer(Modifier.height(6.dp))
-                    Text(t.label.uppercase(), style = NayomType.label, color = if (on) colors.teal else colors.muted)
+                    Box(Modifier.clip(androidx.compose.foundation.shape.RoundedCornerShape(16.dp)).background(if (on) colors.teal.copy(alpha = .16f) else androidx.compose.ui.graphics.Color.Transparent).padding(horizontal = 18.dp, vertical = 6.dp)) {
+                        Icon(if (on) t.active else t.icon, if (on) colors.teal else colors.muted, 26)
+                    }
+                    Spacer(Modifier.height(4.dp))
+                    Text(t.label.uppercase(), style = NayomType.label.copy(fontSize = 11.sp), color = if (on) colors.teal else colors.muted)
                 }
             }
         } else Spacer(Modifier.navigationBarsPadding())

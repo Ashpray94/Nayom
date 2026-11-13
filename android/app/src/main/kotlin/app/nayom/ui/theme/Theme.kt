@@ -14,7 +14,7 @@ class NayomColors(
 )
 
 val LightColors = NayomColors(
-    Color(0xFFF2F8F7), Color(0xFFFFFFFF), Color(0xFF12302F), Color(0xFF4B6663),
+    Color(0xFFE9F3F1), Color(0xFFFFFFFF), Color(0xFF0B2423), Color(0xFF3A5552),
     Color(0xFF23706B), Color(0xFFF5A524), Color(0xFFB3265B), Color(0xFF3F7A1F), Color(0xFF2563B8))
 val DarkColors = NayomColors(
     Color(0xFF0B1B1D), Color(0xFF122A2C), Color(0xFFE8F5F2), Color(0xFFA9C4C0),
@@ -31,19 +31,19 @@ val Cormorant = FontFamily(
 
 /** Type scale from spec/tokens.json (D-25). Roman for firm moments, italic for warm. */
 object NayomType {
-    val hero = TextStyle(fontFamily = Cormorant, fontWeight = FontWeight.Medium, fontSize = 72.sp, lineHeight = 70.sp)
-    val heading = TextStyle(fontFamily = Cormorant, fontWeight = FontWeight.Medium, fontSize = 40.sp, lineHeight = 44.sp)
+    val hero = TextStyle(fontFamily = Cormorant, fontWeight = FontWeight.SemiBold, fontSize = 76.sp, lineHeight = 72.sp)
+    val heading = TextStyle(fontFamily = Cormorant, fontWeight = FontWeight.SemiBold, fontSize = 46.sp, lineHeight = 48.sp)
     val headingWarm = heading.copy(fontStyle = FontStyle.Italic)
     val display = TextStyle(fontFamily = Cormorant, fontWeight = FontWeight.Medium, fontStyle = FontStyle.Italic, fontSize = 46.sp, lineHeight = 46.sp)
-    val numeral = TextStyle(fontFamily = Sora, fontWeight = FontWeight.ExtraLight, fontSize = 56.sp)
-    val title = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = 22.sp, lineHeight = 30.sp)
-    val body = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = 15.sp, lineHeight = 24.sp)
-    val status = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 11.sp, letterSpacing = 1.8.sp)
-    val label = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = 10.sp, letterSpacing = 1.4.sp)
-    val button = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 13.sp, letterSpacing = 2.6.sp)
+    val numeral = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = 60.sp)
+    val title = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = 24.sp, lineHeight = 32.sp)
+    val body = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 25.sp)
+    val status = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 12.sp, letterSpacing = 1.8.sp)
+    val label = TextStyle(fontFamily = Sora, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, letterSpacing = 1.4.sp)
+    val button = TextStyle(fontFamily = Sora, fontWeight = FontWeight.Bold, fontSize = 15.sp, letterSpacing = 1.8.sp)
 }
 
-object Shape { const val card = 22; const val button = 6; const val tile = 44 }
+object Shape { const val card = 26; const val button = 18; const val tile = 44 }
 /** 8dp grid. Screen edge 24, gap between ideas 24, inside a card 24. */
 object Space { const val edge = 24; const val gap = 24; const val pad = 24; const val tight = 8 }
 

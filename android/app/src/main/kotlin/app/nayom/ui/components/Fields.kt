@@ -22,14 +22,15 @@ fun Field(label: String, value: String, onChange: (String) -> Unit, singleLine: 
         Label(label)
         BasicTextField(value, onChange, singleLine = singleLine, textStyle = NayomType.body.copy(color = colors.ink),
             cursorBrush = SolidColor(colors.teal),
-            modifier = Modifier.fillMaxWidth().heightIn(min = minHeight.dp).clip(RoundedCornerShape(14.dp)).background(colors.surface).padding(18.dp))
+            modifier = Modifier.fillMaxWidth().heightIn(min = minHeight.dp).clip(RoundedCornerShape(18.dp)).background(colors.surface).border(BorderStroke(1.5.dp, colors.teal.copy(alpha = .35f)), RoundedCornerShape(18.dp)).padding(18.dp))
     }
 }
 
 @Composable
 fun Chip(text: String, selected: Boolean, onClick: () -> Unit) =
-    Box(Modifier.clip(RoundedCornerShape(Shape.button.dp)).background(if (selected) colors.teal else colors.surface)
-        .clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp)) {
+    Box(Modifier.clip(RoundedCornerShape(22.dp)).background(if (selected) colors.teal else colors.surface)
+        .border(BorderStroke(1.5.dp, colors.teal.copy(alpha = if (selected) 1f else .4f)), RoundedCornerShape(22.dp))
+        .clickable(onClick = onClick).padding(horizontal = 18.dp, vertical = 13.dp)) {
         Text(text, style = NayomType.body, color = if (selected) androidx.compose.ui.graphics.Color.White else colors.ink)
     }
 
@@ -37,7 +38,7 @@ fun Chip(text: String, selected: Boolean, onClick: () -> Unit) =
 fun Row2(title: String, sub: String, trailing: String? = null, onClick: (() -> Unit)? = null) =
     Row(Modifier.fillMaxWidth().then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier).padding(vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween) {
-        Column(Modifier.weight(1f)) { Text(title, style = NayomType.body, color = colors.ink); Text(sub, style = NayomType.body.copy(fontSize = 13.sp), color = colors.muted) }
+        Column(Modifier.weight(1f)) { Text(title, style = NayomType.body.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold), color = colors.ink); Text(sub, style = NayomType.body.copy(fontSize = 13.sp), color = colors.muted) }
         if (trailing != null) Label(trailing)
     }
 
