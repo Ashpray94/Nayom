@@ -91,7 +91,7 @@ class WatcherService : AccessibilityService() {
         store.log("typed-${hit.kind}", "$app | to=$who | $text")
         val dueIdx = when { hit.time == null -> 1; Regex("(?i)tomorrow|tmrw|kal").containsMatchIn(hit.time) -> 2; Regex("(?i)tonight|today|aaj|raat|shaam").containsMatchIn(hit.time) -> 1
             Regex("(?i)\\d+ ?(min|hour|hr)").containsMatchIn(hit.time) -> 0; else -> 1 }
-        val open = Intent(this, MainActivity::class.java).putExtra("what", text.take(80)).putExtra("who", who).putExtra("due", dueIdx)
+        val open = Intent(this, MainActivity::class.java).putExtra("what", text.take(80)).putExtra("who", who).putExtra("due", dueIdx).putExtra("app", app)
         val to = if (who.isNotBlank()) " to $who" else ""
         when (hit.kind) {
             "reflex" -> OverlayService.say("A quick yes$to? Stop. Do you actually have the time for this?", 0, open)

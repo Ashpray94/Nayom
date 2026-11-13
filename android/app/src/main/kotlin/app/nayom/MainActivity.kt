@@ -28,8 +28,9 @@ class MainActivity : ComponentActivity() {
 
     private fun handle(i: Intent?) {
         if (i?.getStringExtra("route") == "inbox") { if (st.onboarded) st.route = Route.Inbox; i.removeExtra("route"); return }
+        i?.getStringExtra("checkin")?.let { if (st.onboarded) st.route = Route.CheckIn(it); i.removeExtra("checkin"); return }
         val what = i?.getStringExtra("what") ?: return
-        if (st.onboarded) st.route = Route.NewPromise(i.getStringExtra("who").orEmpty(), what, i.getIntExtra("due", 1))
+        if (st.onboarded) st.route = Route.NewPromise(i.getStringExtra("who").orEmpty(), what, i.getIntExtra("due", 1), i.getStringExtra("app").orEmpty())
         i.removeExtra("what")
     }
 

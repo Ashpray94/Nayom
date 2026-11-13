@@ -431,7 +431,28 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
     }
 
     // ---- habits: what you usually do, and how long
+    /** A promise reaches its time: she asks if it is done. Tap opens the check-in; also posts a notification. */
+    private fun dueCheck() {
+        val seen = getSharedPreferences("checkin", MODE_PRIVATE)
+        val now = java.time.ZonedDateTime.now()
+        Vault.open(this).promises().filter { it.status == app.nayom.data.Status.Open && !it.due.isAfter(now) && !seen.getBoolean(it.id, false) }.forEach { p ->
+            seen.edit().putBoolean(p.id, true).apply()
+            val tap = Intent(this, MainActivity::class.java).putExtra("checkin", p.id).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            val line = "Time is up: ${p.what}. Did you finish it for ${p.person}? Tap and tell me."
+            reactTo("warn", 0); show(line, 0, tap)
+            runCatching {
+                val ch = "nayom_due"
+                getSystemService(NotificationManager::class.java).createNotificationChannel(android.app.NotificationChannel(ch, "Promise time", NotificationManager.IMPORTANCE_HIGH))
+                val n = Notification.Builder(this, ch).setSmallIcon(android.R.drawable.presence_online).setContentTitle("Time is up").setContentText("${p.what} for ${p.person}. Did you finish?")
+                    .setContentIntent(PendingIntent.getActivity(this, p.id.hashCode(), tap, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)).setAutoCancel(true).build()
+                getSystemService(NotificationManager::class.java).notify(p.id.hashCode(), n)
+            }
+            runCatching { Vault.open(this).log("check-in", "${p.id} | ${p.person} | ${p.what}") }
+        }
+    }
+
     private fun habitsCheck() {
+        runCatching { dueCheck() }
         val h = app.nayom.data.Habits(this); val pkg: String = Habits_cur(); val ms: Long = h.currentMs(); val min: Int = (ms / 60000).toInt()
         if (pkg != wasteApp) { wasteApp = pkg; wasteLevel = 0 }
         val name = h.label(pkg)

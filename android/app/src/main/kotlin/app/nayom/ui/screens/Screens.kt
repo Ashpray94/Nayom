@@ -46,9 +46,9 @@ fun countdown(to: ZonedDateTime, now: ZonedDateTime): String {
 @Composable
 fun TodayScreen(st: AppState) = Screen(actions = {
     val n = st.next
-    if (n != null) Button("Kept", true, Modifier.fillMaxWidth()) { st.mark(n.id, Status.Kept) }
-    Button("Someone asked me", n == null && st.unhandledMiss == null, Modifier.fillMaxWidth()) { st.route = Route.AskIn }
-    Row(Modifier.fillMaxWidth().clickable { st.route = Route.Evening }.padding(top = 8.dp), horizontalArrangement = Arrangement.Center) { Label("Evening sheet") }
+    if (n != null) Button("Done", true, Modifier.fillMaxWidth()) { st.mark(n.id, Status.Kept) }
+    Button("Add request", n == null && st.unhandledMiss == null, Modifier.fillMaxWidth()) { st.route = Route.AskIn }
+    Row(Modifier.fillMaxWidth().clickable { st.route = Route.Evening }.padding(top = 8.dp), horizontalArrangement = Arrangement.Center) { Label("Day summary") }
 }, scroll = st.next != null || st.unhandledMiss != null) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Title("Today")
@@ -61,9 +61,9 @@ fun TodayScreen(st: AppState) = Screen(actions = {
             Spacer(Modifier.height(12.dp))
             Text("${miss.person}'s ${miss.what.lowercase()} was due at ${miss.due.format(hm)}.", style = NayomType.title, color = colors.ink)
             Spacer(Modifier.height(24.dp))
-            Button("Debrief", true, Modifier.fillMaxWidth()) { st.route = Route.Debrief(miss.id) }
+            Button("Explain", true, Modifier.fillMaxWidth()) { st.route = Route.Debrief(miss.id) }
             Spacer(Modifier.height(12.dp))
-            Button("Reschedule", false, Modifier.fillMaxWidth()) { st.mark(miss.id, Status.Moved, st.now.plusDays(1)) }
+            Button("Postpone", false, Modifier.fillMaxWidth()) { st.mark(miss.id, Status.Moved, st.now.plusDays(1)) }
         }
     }
     val n = st.next
@@ -75,15 +75,15 @@ fun TodayScreen(st: AppState) = Screen(actions = {
     } else if (miss == null) {
         Box(Modifier.fillMaxWidth().weight(1f, fill = true).verticalScroll(rememberScrollState()), Alignment.TopCenter) {
             Column(verticalArrangement = Arrangement.spacedBy(Space.gap.dp)) {
-                if (st.day.kept > 0) Empty("all_kept", colors.teal, "All kept.", "${st.day.kept} kept today. Nothing is owed. Rest well.")
-                else Empty("clear_sky", colors.amber, "Clear sky.", "No promises due. Use the quiet to do what you said you would.")
+                if (st.day.kept > 0) Empty("all_kept", colors.teal, "All done.", "${st.day.kept} done today. Nothing is left. Rest well.")
+                else Empty("clear_sky", colors.amber, "All clear.", "No promises are due now. Use the free time well.")
                 Card {
                     Label("What to do here")
                     Spacer(Modifier.height(16.dp))
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        IconLine(R.drawable.ic_promises, colors.teal, "Said yes to someone? Add it under Promises with a time.")
-                        IconLine(R.drawable.ic_people, colors.sky, "Someone asked you? Tap Someone asked me before you answer.")
-                        IconLine(R.drawable.ic_today, colors.amber, "Each night, open the Evening sheet and be honest.")
+                        IconLine(R.drawable.ic_promises, colors.teal, "Promised someone? Add it in Promises.")
+                        IconLine(R.drawable.ic_people, colors.sky, "Someone asked you for something? Tap Add request before you answer.")
+                        IconLine(R.drawable.ic_today, colors.amber, "Every night, check how your day went.")
                     }
                 }
             }
@@ -93,39 +93,55 @@ fun TodayScreen(st: AppState) = Screen(actions = {
 
 @Composable
 fun PromisesScreen(st: AppState) = Screen(actions = {
-    Button("New promise", true, Modifier.fillMaxWidth()) { st.route = Route.NewPromise() }
+    Button("Add promise", true, Modifier.fillMaxWidth()) { st.route = Route.NewPromise() }
 }, scroll = true) {
     Title("Promises")
     val open = st.open
-    if (open.isEmpty()) Empty("nothing_owed", colors.berry, "Nothing owed.", "Every yes you give lives here until you keep it.")
+    if (open.isEmpty()) Empty("nothing_owed", colors.berry, "No promises.", "Your promises show here until you finish them.")
     else Card { open.forEach { p -> Row2(p.what, "${p.person} · ${p.due.format(dm)}", countdown(p.due, st.now).take(5)) { st.route = Route.PromiseDetail(p.id) } } }
     val past = st.promises.filter { it.status != Status.Open }.takeLast(8).reversed()
     if (past.isNotEmpty()) {
         Label("Earlier")
-        Card { past.forEach { p -> Row2(p.what, p.person, p.status.name) } }
+        Card { past.forEach { p -> Row2(p.what, p.person, when (p.status) { Status.Kept -> "Done"; Status.Released -> "Dropped"; else -> p.status.name }) } }
     }
 }
 
 @Composable
 fun NewPromiseScreen(st: AppState, r: Route.NewPromise) {
-    var who by remember { mutableStateOf(r.who) }; var what by remember { mutableStateOf(r.what) }
-    val opts = listOf("In 1 hour" to st.now.plusHours(1), "Tonight 21:00" to st.now.withHour(21).withMinute(0).withSecond(0),
-        "Tomorrow 10:00" to st.now.plusDays(1).withHour(10).withMinute(0).withSecond(0), "In 3 days" to st.now.plusDays(3))
-    var due by remember { mutableStateOf(r.due.coerceIn(0, 3)) }
+    var text by remember { mutableStateOf(r.what) }
+    var whoEdit by remember { mutableStateOf<String?>(r.who.ifBlank { null }) }
+    val nowT = remember { ZonedDateTime.now() }
+    val opts = listOf("In 1 hour" to nowT.plusHours(1), "Tonight 9 PM" to nowT.withHour(21).withMinute(0).withSecond(0),
+        "Tomorrow 10 AM" to nowT.plusDays(1).withHour(10).withMinute(0).withSecond(0), "In 3 days" to nowT.plusDays(3))
+    var pick by remember { mutableStateOf(if (r.what.isNotBlank() && Nlp.parse(r.what, nowT).due == null) r.due.coerceIn(0, 3) else -1) }
+    val p = remember(text) { Nlp.parse(text, nowT) }
+    val who = whoEdit ?: p.who.orEmpty()
+    val due = if (pick >= 0) opts[pick].second else p.due
+    val fmt = DateTimeFormatter.ofPattern("EEE d MMM, h:mm a")
+    val ok = text.isNotBlank() && who.isNotBlank() && due != null
     Screen(actions = {
-        Button("Save promise", who.isNotBlank() && what.isNotBlank(), Modifier.fillMaxWidth()) {
-            if (who.isNotBlank() && what.isNotBlank()) st.addPromise(who, what, opts[due].second) }
+        Button("Save", ok, Modifier.fillMaxWidth()) { if (ok) st.addPromise(who, p.what, due!!, r.app) }
         Button("Cancel", false, Modifier.fillMaxWidth()) { st.back() }
     }, scroll = true) {
         Title("New promise")
-        Field("To whom", who, { who = it }); Field("What", what, { what = it })
-        Label("By when")
-        val clash = remember(due, st.permTick) { runCatching { st.calendar.clash(opts[due].second) }.getOrNull() }
-        if (clash != null) Text("Your calendar already has \"${clash.title}\" at ${clash.start.format(hm)}. Pick a time you can really keep.", style = NayomType.body, color = colors.berry)
-        else if (st.busy >= 6) Text("Your next 12 hours are ${"%.0f".format(st.busy)} h booked. Be careful what you promise.", style = NayomType.body, color = colors.amber)
+        Field("What did you promise?", text, { text = it; pick = -1 }, false, 90)
+        Text("Write it like you talk. Example: Send the report to Rahul tomorrow at 5 pm.", style = NayomType.body, color = colors.muted)
+        if (text.isNotBlank()) Card {
+            Label("I understood")
+            Spacer(Modifier.height(8.dp))
+            Text(p.what, style = NayomType.title, color = colors.ink)
+            Spacer(Modifier.height(4.dp))
+            Text("For: " + who.ifBlank { "not found, please write below" }, style = NayomType.body, color = if (who.isBlank()) colors.berry else colors.muted)
+            Text("When: " + (due?.format(fmt) ?: "not found, please pick below"), style = NayomType.body, color = if (due == null) colors.berry else colors.muted)
+        }
+        Field("Who is it for?", who, { whoEdit = it })
+        Label("Change the time")
+        val clash = remember(due, st.permTick) { due?.let { d -> runCatching { st.calendar.clash(d) }.getOrNull() } }
+        if (clash != null) Text("Your calendar has \"${clash.title}\" at ${clash.start.format(hm)}. Pick a time you can keep.", style = NayomType.body, color = colors.berry)
+        else if (st.busy >= 6) Text("Your next 12 hours are ${"%.0f".format(st.busy)} hours full. Promise carefully.", style = NayomType.body, color = colors.amber)
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             opts.chunked(2).forEachIndexed { row, pair -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                pair.forEachIndexed { i, o -> Chip(o.first, due == row * 2 + i) { due = row * 2 + i } } } }
+                pair.forEachIndexed { i, o -> Chip(o.first, pick == row * 2 + i) { pick = if (pick == row * 2 + i) -1 else row * 2 + i } } } }
         }
     }
 }
@@ -134,9 +150,9 @@ fun NewPromiseScreen(st: AppState, r: Route.NewPromise) {
 fun PromiseDetailScreen(st: AppState, id: String) {
     val p = st.promises.firstOrNull { it.id == id } ?: run { st.back(); return }
     Screen(actions = {
-        Button("Kept", true, Modifier.fillMaxWidth()) { st.mark(id, Status.Kept) }
-        Button("Move to tomorrow", false, Modifier.fillMaxWidth()) { st.mark(id, Status.Moved, p.due.plusDays(1)) }
-        Button("Release", false, Modifier.fillMaxWidth()) { st.mark(id, Status.Released) }
+        Button("Done", true, Modifier.fillMaxWidth()) { st.mark(id, Status.Kept) }
+        Button("Postpone", false, Modifier.fillMaxWidth()) { st.mark(id, Status.Moved, p.due.plusDays(1)) }
+        Button("Drop", false, Modifier.fillMaxWidth()) { st.mark(id, Status.Released) }
         Button("Back", false, Modifier.fillMaxWidth()) { st.back() }
     }) {
         Title("Promise")
@@ -150,19 +166,19 @@ fun PromiseDetailScreen(st: AppState, id: String) {
 
 @Composable
 fun PeopleScreen(st: AppState) = Screen(actions = {
-    if (st.people.isEmpty()) Button("New promise", true, Modifier.fillMaxWidth()) { st.route = Route.NewPromise() }
+    if (st.people.isEmpty()) Button("Add promise", true, Modifier.fillMaxWidth()) { st.route = Route.NewPromise() }
 }, scroll = true) {
     Title("People")
-    if (st.people.isEmpty()) Empty("no_one_yet", colors.sky, "No one yet.", "People appear here once you add a promise or log an ask.")
+    if (st.people.isEmpty()) Empty("no_one_yet", colors.sky, "No one yet.", "People show here after you add a promise or a request.")
     else Card { st.people.forEach { (n, c) -> Row2(n, if (c == 0) "Nothing open" else "$c open", null) } }
 }
 
 @Composable
 fun NotesScreen(st: AppState) = Screen(actions = {
-    Button("New note", true, Modifier.fillMaxWidth()) { st.route = Route.Note(null) }
+    Button("Add note", true, Modifier.fillMaxWidth()) { st.route = Route.Note(null) }
 }, scroll = true) {
     Title("Notes")
-    if (st.notes.isEmpty()) Empty("blank_page", colors.amber, "Blank page.", "Markdown files in your vault show up here. Write the first one.")
+    if (st.notes.isEmpty()) Empty("blank_page", colors.amber, "No notes yet.", "Your notes show here. Add the first one.")
     else Card { st.notes.forEach { n -> Row2(n.name, n.file.parentFile?.name ?: "", null) { st.route = Route.Note(n.file) } } }
 }
 
@@ -186,7 +202,7 @@ fun NoteScreen(st: AppState, r: Route.Note) {
 fun AskInScreen(st: AppState) {
     var who by remember { mutableStateOf("") }; var what by remember { mutableStateOf("") }
     Screen(actions = {
-        Button("Continue", who.isNotBlank() && what.isNotBlank(), Modifier.fillMaxWidth()) {
+        Button("Next", who.isNotBlank() && what.isNotBlank(), Modifier.fillMaxWidth()) {
             if (who.isNotBlank() && what.isNotBlank()) { val id = st.ask(who, what); st.route = Route.Gate(id) } }
         Button("Cancel", false, Modifier.fillMaxWidth()) { st.back() }
     }, scroll = true) { Title("Someone asked"); Field("Who", who, { who = it }); Field("What do they want", what, { what = it }) }
@@ -201,9 +217,9 @@ fun GateScreen(st: AppState, askId: String) {
     val locked = left > 0
     fun go(d: Decision) { st.decide(askId, d); if (d == Decision.Yes) st.route = Route.NewPromise(a.from, a.what) else st.back() }
     Screen(actions = {
-        Button("No, kindly", true, Modifier.fillMaxWidth()) { go(Decision.No) }
-        Button("Later", false, Modifier.fillMaxWidth()) { if (!locked) go(Decision.Later) }
-        Button("Yes", false, Modifier.fillMaxWidth()) { if (!locked) go(Decision.Yes) }
+        Button("Say no", true, Modifier.fillMaxWidth()) { go(Decision.No) }
+        Button("Wait", false, Modifier.fillMaxWidth()) { if (!locked) go(Decision.Later) }
+        Button("Say yes", false, Modifier.fillMaxWidth()) { if (!locked) go(Decision.Yes) }
         Spacer(Modifier.height(4.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { Label(if (locked) "Yes and Later unlock in $left s" else "Choose") }
     }, scroll = true) {
@@ -211,7 +227,7 @@ fun GateScreen(st: AppState, askId: String) {
     Title("Before you say yes")
         Text("${a.from} asks: ${a.what}.", style = NayomType.title, color = colors.ink)
         val clash = st.open.firstOrNull { it.due.isBefore(st.now.plusHours(24)) }
-        if (clash != null) Card { IconLine(R.drawable.ic_clock, colors.amber, "Pushes out ${clash.person}'s ${clash.what.lowercase()}, due ${clash.due.format(hm)}.") }
+        if (clash != null) Card { IconLine(R.drawable.ic_clock, colors.amber, "This will clash with ${clash.person}'s task: ${clash.what.lowercase()}, due ${clash.due.format(hm)}.") }
     }
 }
 
@@ -224,9 +240,9 @@ fun DebriefScreen(st: AppState, id: String) {
         Button("Back", false, Modifier.fillMaxWidth()) { st.back() }
     }, scroll = true) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { Illustration("face_worried", colors.sky, 170) }
-        Title("Debrief")
-        Text("What got in the way of ${p?.what?.lowercase() ?: "it"}?", style = NayomType.title, color = colors.ink)
-        Field("One line, honest", why, { why = it }, false, 120)
+        Title("What happened?")
+        Text("Why did you not finish: ${p?.what?.lowercase() ?: "it"}?", style = NayomType.title, color = colors.ink)
+        Field("Tell me in one line", why, { why = it }, false, 120)
     }
 }
 
@@ -235,32 +251,33 @@ fun DebriefScreen(st: AppState, id: String) {
 fun EveningScreen(st: AppState) = Screen(actions = {
     Button("Back", false, Modifier.fillMaxWidth()) { st.back() }
 }) {
-    Label("Evening")
-    Text("Phone down.", style = NayomType.hero, color = colors.ink)
-    if (st.day == Day(0, 0, 0, 0, 0)) Empty("quiet_day", colors.sky, "A quiet day.", "Nothing kept, missed or moved today.")
+    Label("Tonight")
+    Text("Put the phone down.", style = NayomType.hero, color = colors.ink)
+    if (st.day == Day(0, 0, 0, 0, 0)) Empty("quiet_day", colors.sky, "A quiet day.", "Nothing done, missed or moved today.")
     else Card {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            listOf(Triple("Kept", st.day.kept, colors.teal), Triple("Missed", st.day.missed, colors.berry), Triple("Moved", st.day.moved, colors.ink),
-                Triple("Reflex yes", st.day.reflexYes, colors.ink)).forEach { (k, v, c) ->
+            listOf(Triple("Done", st.day.kept, colors.teal), Triple("Missed", st.day.missed, colors.berry), Triple("Moved", st.day.moved, colors.ink),
+                Triple("Quick yes", st.day.reflexYes, colors.ink)).forEach { (k, v, c) ->
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("$v", style = NayomType.numeral.copy(fontSize = 40.sp), color = c); Spacer(Modifier.height(8.dp)); Label(k)
                 }
             }
         }
     }
-    if (st.day.gated > 0) Text("${st.day.gated} asks went through the gate today.", style = NayomType.body, color = colors.muted)
+    if (st.day.gated > 0) Text("${st.day.gated} asks were checked before you said yes today.", style = NayomType.body, color = colors.muted)
 }
 
 @Composable
 fun SetupScreen(st: AppState) = Screen(scroll = true) {
     Title("Settings")
-    Card { IconLine(R.drawable.ic_shield, colors.sky, "Never read: banking, OTP, authenticator and password apps.") }
+    Card { IconLine(R.drawable.ic_shield, colors.sky, "I never read banking, OTP and password apps.") }
     Card { IconLine(R.drawable.ic_check, colors.teal, "Everything is saved as files on this phone. Nothing leaves it.") }
-    Card { Label("Vault folder"); Spacer(Modifier.height(8.dp)); Text(st.store.root.absolutePath, style = NayomType.body, color = colors.muted) }
+    Card { Label("Notes folder"); Spacer(Modifier.height(8.dp)); Text(st.store.root.absolutePath, style = NayomType.body, color = colors.muted) }
     val ctx = androidx.compose.ui.platform.LocalContext.current
     PermissionCentre(st)
-    Button("Today's activity", false, Modifier.fillMaxWidth()) { st.loadActivity(); st.route = Route.Activity }
-    Button("Show the intro again", false, Modifier.fillMaxWidth()) { st.replayIntro() }
+    Button("View people", false, Modifier.fillMaxWidth()) { st.route = Route.People }
+    Button("View activity", false, Modifier.fillMaxWidth()) { st.loadActivity(); st.route = Route.Activity }
+    Button("Replay intro", false, Modifier.fillMaxWidth()) { st.replayIntro() }
 }
 
 @Composable
@@ -279,12 +296,12 @@ fun OnboardingScreen(st: AppState, step: Int) {
     val ctx = androidx.compose.ui.platform.LocalContext.current
     val pages = listOf(
         Triple("clear_sky", "I am Nayom.", "I am here so you keep your word. I will be firm, and I will be kind about it."),
-        Triple("nothing_owed", "Three things to do.", "1. Said yes to someone: add the promise with a time.\n2. Someone asks you: tell me first, then answer.\n3. Each night: open the Evening sheet and tell the truth."),
+        Triple("nothing_owed", "Three simple steps.", "1. Promised someone? Write it in Promises.\n2. Someone asks you for something? Tell me first, then answer.\n3. Every night, check how your day went."),
         Triple("no_one_yet", "Let me see your messages.", "I read message notifications on this phone to notice promises. Banking, OTP and password apps are never read. Everything stays on this phone."),
     )
     val (art, line, text) = pages[step]
     Screen(actions = {
-        if (step == 2) Button("Allow message access", false, Modifier.fillMaxWidth()) {
+        if (step == 2) Button("Allow messages", false, Modifier.fillMaxWidth()) {
             ctx.startActivity(android.content.Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
         }
         Button(if (step < 2) "Next" else "Start", true, Modifier.fillMaxWidth()) {
@@ -310,11 +327,11 @@ fun PermissionCentre(st: AppState) {
     val cal = st.calendar.allowed
     val launcher = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()) { st.permTick++ }
     fun open(action: String, uri: String? = null) = ctx.startActivity(android.content.Intent(action).apply { if (uri != null) data = android.net.Uri.parse(uri) }.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
-    Label("Nayom's powers")
+    Label("What Nayom can do")
     Card {
         Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            PermRow("Floating head over every app", overlay, "Allow") { open(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, "package:${ctx.packageName}") }
-            PermRow("Watch what I type", access, "Allow") { open(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS) }
+            PermRow("Floating head over apps", overlay, "Allow") { open(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, "package:${ctx.packageName}") }
+            PermRow("See what I type", access, "Allow") { open(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS) }
             PermRow("See my messages", listener, "Allow") { open("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS") }
             PermRow("Calendar, calls and notifications", cal, "Allow") {
                 launcher.launch(arrayOf(android.Manifest.permission.READ_CALENDAR, android.Manifest.permission.WRITE_CALENDAR,
@@ -325,7 +342,7 @@ fun PermissionCentre(st: AppState) {
     if (!access) Text("If Allow is greyed out: App info for Nayom, three-dot menu, Allow restricted settings. Then try again.", style = NayomType.body, color = colors.muted)
     var on by remember { mutableStateOf(prefs.avatarOn) }
     var hidden by remember { mutableStateOf(prefs.headHidden) }
-    Button(if (hidden) "Show the floating head" else "Hide the floating head", false, Modifier.fillMaxWidth()) {
+    Button(if (hidden) "Show head" else "Hide head", false, Modifier.fillMaxWidth()) {
         hidden = !hidden; prefs.headHidden = hidden
         if (overlay) app.nayom.service.OverlayService.command(ctx, if (hidden) "HIDE" else "SHOW")
     }

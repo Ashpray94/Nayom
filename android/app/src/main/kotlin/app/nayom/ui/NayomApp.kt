@@ -18,7 +18,7 @@ import app.nayom.ui.theme.*
 private enum class Tab(val label: String, val icon: Int, val active: Int) {
     Today("Today", R.drawable.ic_today, R.drawable.ic_today_active),
     Promises("Promises", R.drawable.ic_promises, R.drawable.ic_promises_active),
-    People("People", R.drawable.ic_people, R.drawable.ic_people_active),
+    Mother("Mother", R.drawable.ic_people, R.drawable.ic_people_active),
     Notes("Notes", R.drawable.ic_notes, R.drawable.ic_notes_active),
     Settings("Settings", R.drawable.ic_settings, R.drawable.ic_settings_active),
 }
@@ -32,7 +32,7 @@ fun NayomApp(st: AppState = viewModel()) {
             when (val r = st.route) {
                 Route.Home -> when (Tab.entries[st.tab]) {
                     Tab.Today -> TodayScreen(st); Tab.Promises -> PromisesScreen(st)
-                    Tab.People -> PeopleScreen(st); Tab.Notes -> NotesScreen(st); Tab.Settings -> SetupScreen(st)
+                    Tab.Mother -> ChatScreen(st); Tab.Notes -> NotesScreen(st); Tab.Settings -> SetupScreen(st)
                 }
                 is Route.PromiseDetail -> PromiseDetailScreen(st, r.id)
                 is Route.NewPromise -> NewPromiseScreen(st, r)
@@ -45,6 +45,8 @@ fun NayomApp(st: AppState = viewModel()) {
                 is Route.Onboarding -> OnboardingScreen(st, r.step)
                 Route.Activity -> ActivityScreen(st)
                 Route.Inbox -> InboxScreen(st)
+                Route.People -> PeopleScreen(st)
+                is Route.CheckIn -> CheckInScreen(st, r.id)
             }
         }
         if (st.route == Route.Home && st.onboarded) Row(Modifier.fillMaxWidth().background(colors.surface).navigationBarsPadding().padding(top = 12.dp, bottom = 8.dp)) {

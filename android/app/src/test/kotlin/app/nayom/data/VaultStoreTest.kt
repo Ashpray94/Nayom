@@ -24,7 +24,7 @@ class VaultStoreTest {
     }
     @Test fun sweepMarksOverdueOnce() {
         val s = store(); s.addPromise("A", "x", now.plusMinutes(10))
-        now = now.plusHours(1)
+        now = now.plusHours(4)
         assertEquals(1, s.sweepMissed()); assertEquals(0, s.sweepMissed())
         assertEquals(Status.Missed, s.promises().single().status)
     }

@@ -8,7 +8,7 @@ enum class Status { Open, Moved, Kept, Missed, Released;
     companion object { fun of(s: String) = entries.firstOrNull { it.name.equals(s, true) } ?: Open } }
 enum class Decision { Yes, Later, No }
 
-data class Promise(val id: String, val person: String, val what: String, val due: ZonedDateTime, val status: Status)
+data class Promise(val id: String, val person: String, val what: String, val due: ZonedDateTime, val status: Status, val app: String = "nayom")
 data class Ask(val id: String, val from: String, val what: String, val created: ZonedDateTime, val decision: Decision?)
 data class Note(val name: String, val file: File)
 data class Day(val kept: Int, val missed: Int, val moved: Int, val gated: Int, val reflexYes: Int)
@@ -32,11 +32,11 @@ class VaultStore(val root: File, private val dev: String = "ph", private val zon
 
     fun slug(name: String) = name.trim().lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-').ifEmpty { "someone" }
 
-    fun addPromise(person: String, what: String, due: ZonedDateTime): Promise {
+    fun addPromise(person: String, what: String, due: ZonedDateTime, app: String = "nayom"): Promise {
         val id = newId('P')
         File(dir("promises"), "$id.md").writeText(
             "---\nnayom: promise\nid: $id\nperson: \"[[${slug(person)}]]\"\nwhat: ${q(what)}\ndue: ${due.format(iso)}\n" +
-            "due_source: stated\ncreated: ${clock().format(iso)}\nsource_app: nayom\nquote_enc: null\nprivate: false\n---\n")
+            "due_source: stated\ncreated: ${clock().format(iso)}\nsource_app: ${app.trim().ifEmpty { "nayom" }}\nquote_enc: null\nprivate: false\n---\n")
         ensurePerson(person)
         ledger(id, "open", null)
         log("promise-add", "$id | ${person.trim()} | ${what.trim()} | due ${due.format(iso)}")
@@ -82,6 +82,16 @@ class VaultStore(val root: File, private val dev: String = "ph", private val zon
     fun inboxToday(): List<Msg> = File(dir("inbox/$dev"), clock().toLocalDate().toString() + ".md").takeIf { it.exists() }?.readLines().orEmpty()
         .filter { it.startsWith("- ") }.map { it.removePrefix("- ").split(" | ", limit = 4) }.filter { it.size == 4 }
         .map { Msg(it[0], it[1], it[2], it[3]) }.reversed()
+
+    // ---- chat with mother. chat/<dev>/YYYY-MM-DD.md
+    data class Chat(val time: String, val me: Boolean, val text: String)
+    fun chat(me: Boolean, text: String) {
+        val now = clock(); val f = File(dir("chat/$dev"), now.toLocalDate().toString() + ".md")
+        if (!f.exists()) f.writeText("# ${now.toLocalDate()}\n\n")
+        f.appendText("- ${now.format(DateTimeFormatter.ofPattern("HH:mm:ss"))} | ${if (me) "me" else "mom"} | ${text.trim().replace("\n", " ")}\n")
+    }
+    fun chatToday(): List<Chat> = File(dir("chat/$dev"), clock().toLocalDate().toString() + ".md").takeIf { it.exists() }?.readLines().orEmpty()
+        .filter { it.startsWith("- ") }.map { it.removePrefix("- ").split(" | ", limit = 3) }.filter { it.size == 3 }.map { Chat(it[0], it[1] == "me", it[2]) }
 
     // ---- inbox: messages that reached the phone (notification listener). inbox/<dev>/YYYY-MM-DD.md
     fun inbox(app: String, title: String, text: String) {
@@ -132,7 +142,7 @@ class VaultStore(val root: File, private val dev: String = "ph", private val zon
             val m = front(f); val id = m["id"] ?: return@mapNotNull null
             val l = st[id]
             val due = l?.newDue?.takeIf { it.isNotEmpty() }?.let { ZonedDateTime.parse(it) } ?: ZonedDateTime.parse(m["due"] ?: return@mapNotNull null)
-            Promise(id, person(m["person"] ?: ""), m["what"] ?: "", due, Status.of(l?.status ?: "open").let { if (it == Status.Moved) Status.Open else it })
+            Promise(id, person(m["person"] ?: ""), m["what"] ?: "", due, Status.of(l?.status ?: "open").let { if (it == Status.Moved) Status.Open else it }, m["source_app"] ?: "nayom")
         }.sortedBy { it.due }
     }
 
@@ -145,10 +155,10 @@ class VaultStore(val root: File, private val dev: String = "ph", private val zon
         }.sortedByDescending { it.created }
     }
 
-    /** Anything open and past due is a miss. Written once as a ledger line so every device agrees. */
+    /** Open and more than 2 hours past due is a miss (she asks you first at the due time). Written once as a ledger line so every device agrees. */
     fun sweepMissed(): Int {
         val now = clock(); var n = 0
-        promises().filter { it.status == Status.Open && it.due.isBefore(now) }.forEach { setStatus(it.id, Status.Missed); n++ }
+        promises().filter { it.status == Status.Open && it.due.plusHours(2).isBefore(now) }.forEach { setStatus(it.id, Status.Missed); n++ }
         return n
     }
 

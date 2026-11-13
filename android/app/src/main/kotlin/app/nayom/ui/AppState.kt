@@ -12,7 +12,7 @@ import java.time.ZonedDateTime
 sealed interface Route {
     data object Home : Route
     data class PromiseDetail(val id: String) : Route
-    data class NewPromise(val who: String = "", val what: String = "", val due: Int = 1) : Route
+    data class NewPromise(val who: String = "", val what: String = "", val due: Int = 1, val app: String = "nayom") : Route
     data object AskIn : Route
     data class Gate(val askId: String) : Route
     data class Debrief(val id: String) : Route
@@ -20,7 +20,9 @@ sealed interface Route {
     data object Evening : Route
     data object Setup : Route
     data object Activity : Route
+    data class CheckIn(val id: String) : Route
     data object Inbox : Route
+    data object People : Route
     data class Onboarding(val step: Int = 0) : Route
 }
 
@@ -64,12 +66,32 @@ class AppState(app: Application) : AndroidViewModel(app) {
     val dueSoon get() = open.count { it.due.isBefore(now.plusHours(48)) }
     val unhandledMiss get() = promises.lastOrNull { it.status == Status.Missed && it.id !in debriefed }
 
+    var chat by mutableStateOf(listOf<VaultStore.Chat>()); private set
+    var chatDraft by mutableStateOf<String?>(null); var chatDone by mutableStateOf<String?>(null)
+    fun loadChat() { chat = store.chatToday(); if (chat.isEmpty()) { store.chat(false, "Come, sit. Did you eat? What is pending today? Tell me."); chat = store.chatToday() } }
+    fun say(text: String) {
+        store.chat(true, text)
+        val r = MomChat.reply(text, open, wasterMin(), ZonedDateTime.now())
+        store.chat(false, r.text); chatDraft = r.draft; chatDone = r.markDoneId; chat = store.chatToday()
+        runCatching { Brain(getApplication()).event("chat", null, text) }
+    }
+    private fun wasterMin() = runCatching { Habits(getApplication()).wasterToday() }.getOrDefault(0)
+
     fun back() { route = Route.Home }
-    fun addPromise(who: String, what: String, due: ZonedDateTime) {
-        store.addPromise(who, what, due)
+    fun addPromise(who: String, what: String, due: ZonedDateTime, app: String = "nayom") {
+        store.addPromise(who, what, due, app)
         runCatching { calendar.add("$what ($who)", due)?.let { store.log("calendar", "$what -> event $it") } }
         refresh(); back()
     }
+    /** Opens the share sheet inside the app where the promise was made, so the update goes to the same person. */
+    fun tellThem(p: Promise, text: String) {
+        val ctx = getApplication<Application>()
+        val send = android.content.Intent(android.content.Intent.ACTION_SEND).setType("text/plain").putExtra(android.content.Intent.EXTRA_TEXT, text)
+        val tried = if (p.app != "nayom" && p.app.contains('.')) runCatching { ctx.startActivity(android.content.Intent(send).setPackage(p.app).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)); true }.getOrDefault(false) else false
+        if (!tried) ctx.startActivity(android.content.Intent.createChooser(send, "Send to ${p.person}").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+        store.log("update-sent", "${p.id} | ${p.person} | ${p.app}")
+    }
+    fun markStay(id: String, s: Status, newDue: ZonedDateTime? = null) { store.setStatus(id, s, newDue); if (s == Status.Kept) { app.nayom.service.OverlayService.mood("happy", 6000); app.nayom.service.OverlayService.say(app.nayom.data.Mom.kept(), 5000) }; refresh() }
     fun mark(id: String, s: Status, newDue: ZonedDateTime? = null) { store.setStatus(id, s, newDue); if (s == Status.Kept) app.nayom.service.OverlayService.mood("happy", 6000); app.nayom.service.OverlayService.say(app.nayom.data.Mom.kept(), 5000); refresh(); back() }
     fun ask(from: String, what: String): String { val a = store.addAsk(from, what); refresh(); return a.id }
     fun decide(id: String, d: Decision) { store.decide(id, d); refresh() }
