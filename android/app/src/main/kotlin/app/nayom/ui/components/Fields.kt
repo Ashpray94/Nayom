@@ -46,15 +46,55 @@ fun Row2(title: String, sub: String, trailing: String? = null, onClick: (() -> U
 fun Title(text: String, warm: Boolean = false, color: androidx.compose.ui.graphics.Color = colors.ink) =
     Text(text, style = if (warm) NayomType.headingWarm else NayomType.heading, color = color)
 
-/** Empty / celebration state: one icon tile, one short serif line, one plain sentence. Action sits in the screen's bottom actions. */
+/** Single-line illustration: robot mum in ink, one concept fill in an accent. Layers so dark mode just works. */
 @Composable
-fun Empty(icon: Int, tint: androidx.compose.ui.graphics.Color, line: String, sentence: String, modifier: Modifier = Modifier) =
-    Column(modifier.fillMaxWidth().padding(vertical = 24.dp), horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(20.dp)) {
-        Box(Modifier.size(72.dp).clip(RoundedCornerShape(24.dp)).background(tint.copy(alpha = .14f)), androidx.compose.ui.Alignment.Center) {
-            Icon(icon, tint, 36)
-        }
+fun Illustration(name: String, accent: androidx.compose.ui.graphics.Color, size: Int = 220) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    fun id(suffix: String) = ctx.resources.getIdentifier("ill_${name}_$suffix", "drawable", ctx.packageName)
+    Box(Modifier.size(size.dp)) {
+        Icon(id("fill"), accent.copy(alpha = .38f), size)
+        Icon(id("line"), colors.ink, size)
+    }
+}
+
+/** Empty or celebration state: illustration, one serif line, one plain sentence. The action sits in the screen's bottom actions. */
+@Composable
+fun Empty(art: String, accent: androidx.compose.ui.graphics.Color, line: String, sentence: String, modifier: Modifier = Modifier) =
+    Column(modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Illustration(art, accent)
         Text(line, style = NayomType.display.copy(fontSize = 40.sp, lineHeight = 44.sp), color = colors.ink, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         Text(sentence, style = NayomType.body, color = colors.muted, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             modifier = Modifier.padding(horizontal = 24.dp))
     }
+
+/**
+ * Hero dial: the one thing on Today. A hairline ring fills as the deadline nears (24 h window).
+ * Calm teal until the last hour, then berry. Everything inside is centred and quiet.
+ */
+@Composable
+fun HeroDial(label: String, time: String, title: String, sub: String, progress: Float, urgent: Boolean) {
+    val arc = if (urgent) colors.berry else colors.teal
+    val track = colors.ink.copy(alpha = .08f)
+    Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(colors.surface).padding(vertical = 40.dp, horizontal = 24.dp),
+        androidx.compose.ui.Alignment.Center) {
+        androidx.compose.foundation.Canvas(Modifier.size(280.dp)) {
+            val w = 3.dp.toPx(); val inset = w / 2
+            val sz = androidx.compose.ui.geometry.Size(size.width - w, size.height - w)
+            val tl = androidx.compose.ui.geometry.Offset(inset, inset)
+            drawArc(track, 0f, 360f, false, tl, sz, style = androidx.compose.ui.graphics.drawscope.Stroke(w))
+            drawArc(arc, -90f, 360f * progress.coerceIn(0.004f, 1f), false, tl, sz,
+                style = androidx.compose.ui.graphics.drawscope.Stroke(w, cap = androidx.compose.ui.graphics.StrokeCap.Round))
+        }
+        Column(horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally, modifier = Modifier.width(210.dp)) {
+            Text(label.uppercase(), style = NayomType.label, color = colors.muted)
+            Spacer(Modifier.height(14.dp))
+            Text(time, style = NayomType.numeral.copy(fontSize = 44.sp), color = if (urgent) colors.berry else colors.ink)
+            Spacer(Modifier.height(14.dp))
+            Text(title, style = NayomType.title.copy(fontSize = 18.sp, lineHeight = 24.sp), color = colors.ink,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center, maxLines = 2)
+            Spacer(Modifier.height(4.dp))
+            Text(sub, style = NayomType.body.copy(fontSize = 13.sp), color = colors.muted, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+        }
+    }
+}

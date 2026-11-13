@@ -45,7 +45,9 @@ fun countdown(to: ZonedDateTime, now: ZonedDateTime): String {
 
 @Composable
 fun TodayScreen(st: AppState) = Screen(actions = {
-    Button("Someone asked me", st.next == null && st.unhandledMiss == null, Modifier.fillMaxWidth()) { st.route = Route.AskIn }
+    val n = st.next
+    if (n != null) Button("Kept", true, Modifier.fillMaxWidth()) { st.mark(n.id, Status.Kept) }
+    Button("Someone asked me", n == null && st.unhandledMiss == null, Modifier.fillMaxWidth()) { st.route = Route.AskIn }
 }, scroll = true) {
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Title("Today")
@@ -65,20 +67,13 @@ fun TodayScreen(st: AppState) = Screen(actions = {
     }
     val n = st.next
     if (n != null) {
-        Card {
-            Label("Next promise")
-            Spacer(Modifier.height(16.dp))
-            Text(countdown(n.due, st.now), style = NayomType.numeral, color = colors.ink)
-            Spacer(Modifier.height(8.dp))
-            Text(n.what, style = NayomType.title, color = colors.ink)
-            Text("${n.person} · due ${n.due.format(hm)}", style = NayomType.body, color = colors.muted)
-            Spacer(Modifier.height(24.dp))
-            Button("Kept", true, Modifier.fillMaxWidth()) { st.mark(n.id, Status.Kept) }
-        }
-        Card { IconLine(R.drawable.ic_promises, colors.teal, "${st.dueSoon} due in 48 h") }
+        val left = Duration.between(st.now, n.due)
+        HeroDial("Next promise", countdown(n.due, st.now), n.what, "${n.person} · due ${n.due.format(hm)}",
+            1f - left.seconds / 86400f, left.seconds < 3600)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { Label("${st.dueSoon} due in the next 48 h") }
     } else if (miss == null) {
-        if (st.day.kept > 0) Empty(R.drawable.ic_check, colors.teal, "All kept.", "${st.day.kept} kept today. Nothing is owed. Rest well.")
-        else Empty(R.drawable.ic_today, colors.teal, "Clear sky.", "No promises due. When you say yes to someone, add it in Promises.")
+        if (st.day.kept > 0) Empty("all_kept", colors.teal, "All kept.", "${st.day.kept} kept today. Nothing is owed. Rest well.")
+        else Empty("clear_sky", colors.amber, "Clear sky.", "No promises due. When you say yes to someone, add it in Promises.")
     }
     Box(Modifier.clickable { st.route = Route.Evening }) { Label("Evening sheet") }
 }
@@ -89,7 +84,7 @@ fun PromisesScreen(st: AppState) = Screen(actions = {
 }, scroll = true) {
     Title("Promises")
     val open = st.open
-    if (open.isEmpty()) Empty(R.drawable.ic_promises, colors.teal, "Nothing owed.", "Every yes you give lives here until you keep it.")
+    if (open.isEmpty()) Empty("nothing_owed", colors.berry, "Nothing owed.", "Every yes you give lives here until you keep it.")
     else Card { open.forEach { p -> Row2(p.what, "${p.person} · ${p.due.format(dm)}", countdown(p.due, st.now).take(5)) { st.route = Route.PromiseDetail(p.id) } } }
     val past = st.promises.filter { it.status != Status.Open }.takeLast(8).reversed()
     if (past.isNotEmpty()) {
@@ -142,7 +137,7 @@ fun PeopleScreen(st: AppState) = Screen(actions = {
     if (st.people.isEmpty()) Button("New promise", true, Modifier.fillMaxWidth()) { st.route = Route.NewPromise() }
 }, scroll = true) {
     Title("People")
-    if (st.people.isEmpty()) Empty(R.drawable.ic_people, colors.sky, "No one yet.", "People appear here once you add a promise or log an ask.")
+    if (st.people.isEmpty()) Empty("no_one_yet", colors.sky, "No one yet.", "People appear here once you add a promise or log an ask.")
     else Card { st.people.forEach { (n, c) -> Row2(n, if (c == 0) "Nothing open" else "$c open", null) } }
 }
 
@@ -151,7 +146,7 @@ fun NotesScreen(st: AppState) = Screen(actions = {
     Button("New note", true, Modifier.fillMaxWidth()) { st.route = Route.Note(null) }
 }, scroll = true) {
     Title("Notes")
-    if (st.notes.isEmpty()) Empty(R.drawable.ic_notes, colors.amber, "Blank page.", "Markdown files in your vault show up here. Write the first one.")
+    if (st.notes.isEmpty()) Empty("blank_page", colors.amber, "Blank page.", "Markdown files in your vault show up here. Write the first one.")
     else Card { st.notes.forEach { n -> Row2(n.name, n.file.parentFile?.name ?: "", null) { st.route = Route.Note(n.file) } } }
 }
 
@@ -224,7 +219,7 @@ fun EveningScreen(st: AppState) = Screen(actions = {
 }) {
     Label("Evening")
     Text("Phone down.", style = NayomType.hero, color = colors.ink)
-    if (st.day == Day(0, 0, 0, 0, 0)) Empty(R.drawable.ic_today, colors.teal, "A quiet day.", "Nothing kept, missed or moved today.")
+    if (st.day == Day(0, 0, 0, 0, 0)) Empty("quiet_day", colors.sky, "A quiet day.", "Nothing kept, missed or moved today.")
     else Card {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             listOf(Triple("Kept", st.day.kept, colors.teal), Triple("Missed", st.day.missed, colors.berry), Triple("Moved", st.day.moved, colors.ink),
