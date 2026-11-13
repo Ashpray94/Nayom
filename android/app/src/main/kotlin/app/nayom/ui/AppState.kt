@@ -31,8 +31,10 @@ class AppState(app: Application) : AndroidViewModel(app) {
     var day by mutableStateOf(Day(0, 0, 0, 0, 0)); private set
     var debriefed by mutableStateOf(setOf<String>()); private set
     var now by mutableStateOf(ZonedDateTime.now()); private set
-    var route by mutableStateOf<Route>(Route.Home)
-        set(v) { field = v; store.log("open", v::class.simpleName.orEmpty()) }
+    private var routeState by mutableStateOf<Route>(Route.Home)
+    var route: Route
+        get() = routeState
+        set(v) { routeState = v; store.log("open", v::class.simpleName.orEmpty()) }
     var tab by mutableStateOf(0)
     var activity by mutableStateOf(listOf<VaultStore.Entry>()); private set
     fun loadActivity() { activity = store.activity() }
