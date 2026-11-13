@@ -27,7 +27,7 @@ class WatcherService : AccessibilityService() {
         val screens = net.toFloat() / dm.heightPixels; val speed = screens * 1000f / dur
         val changed = gIdx0 >= 0 && gIdx != gIdx0
         val dir = if (gY >= gY0) 1 else -1
-        val swipe = changed || (screens >= 0.35f && speed >= 0.8f)
+        val swipe = changed || (screens >= 0.20f && (gEvents <= 1 || speed >= 0.8f))   // YouTube reports a whole flick as ONE event; slow drags arrive as several
         if (swipe) OverlayService.react("scroll", dir) else if (net > dp(40)) OverlayService.react("nod", dir)
         runCatching { Vault.open(this).log("gesture", "${if (swipe) "swipe" else "drag"} ${(screens * 100).toInt()}% in ${dur}ms idx=${gIdx0}>${gIdx} events=$gEvents dY=$gDelta y=${gY0}>${gY} app=${OverlayService.fgPkg}") }
     }
