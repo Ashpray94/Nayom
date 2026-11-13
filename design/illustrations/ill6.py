@@ -35,37 +35,57 @@ def brush(p0,c1,c2,p3,w0,w1=.15,n=26):
     pts=L_+R_[::-1]
     return "M"+"L".join(f"{x:.2f} {y:.2f}" for x,y in pts)+"Z"
 def mir(pt): return (L(pt[0]),pt[1])
-def dot(cx,cy,rx,ry,mirror): return ell(L(cx) if mirror else cx,cy,rx,ry)
-def tail(spec,mirror):
-    P=[(mir(p) if mirror else p) for p in spec[:4]]
-    return brush(P[0],P[1],P[2],P[3],spec[4],spec[5] if len(spec)>5 else .15)
-# Each face is a pair of brush-drawn eyes (a dot plus a flick tail) and a tiny mouth, after the hand sketches (D-31).
-# eye = (dot cx,cy,rx,ry), tail = (p0,c1,c2,p3,w0[,w1]); left eye drawn, right = mirror unless given.
+import random
+def _smooth(pts):
+    """closed Catmull-Rom -> cubic path, so the outline is a soft brush edge, not a polygon"""
+    n=len(pts); d=f"M{pts[0][0]:.2f} {pts[0][1]:.2f}"
+    for i in range(n):
+        p0,p1,p2,p3=pts[(i-1)%n],pts[i],pts[(i+1)%n],pts[(i+2)%n]
+        c1=(p1[0]+(p2[0]-p0[0])/6,p1[1]+(p2[1]-p0[1])/6); c2=(p2[0]-(p3[0]-p1[0])/6,p2[1]-(p3[1]-p1[1])/6)
+        d+=f"C{c1[0]:.2f} {c1[1]:.2f} {c2[0]:.2f} {c2[1]:.2f} {p2[0]:.2f} {p2[1]:.2f}"
+    return d+"Z"
+def comma(p0,c1,c2,p3,r,tail,n=18,seed=0):
+    """One continuous hand-brushed comma: round head, belly swelling a touch, body narrowing into a tail that ends in a soft rounded tip. Slight pressure/hand irregularity."""
+    rnd=random.Random(int(p0[0]*10+p0[1]*7+seed))
+    def sm(x): x=max(0,min(1,x)); return x*x*(3-2*x)
+    ph=rnd.random()*6
+    L_,R_=[],[]
+    for i in range(n+1):
+        t=i/n; x,y=bez(p0,c1,c2,p3,t); dx,dy=dbez(p0,c1,c2,p3,t); m=math.hypot(dx,dy) or 1
+        nx,ny=-dy/m,dx/m
+        w=((2*r-tail)*(1-sm(t/.40))+tail*(1-t)**.8)/2
+        w*=1+0.07*math.sin(ph+t*7)           # pressure drift
+        w=max(w,0.55)                          # soft tip, never a needle
+        j=0.35*math.sin(ph*2+t*5)              # hand drift off the ideal line
+        L_.append((x+nx*(w+j),y+ny*(w+j))); R_.append((x-nx*(w-j),y-ny*(w-j)))
+    dx,dy=dbez(p0,c1,c2,p3,0); th=math.atan2(dy,dx)
+    cap=[(p0[0]-r*0.92*math.cos(th)*math.sin(k*math.pi/8)*-1+0,p0[1]) for k in range(0)]
+    w0=math.hypot(L_[0][0]-R_[0][0],L_[0][1]-R_[0][1])/2
+    head=[(p0[0]+w0*math.cos(th-math.pi/2-k*math.pi/6),p0[1]+w0*math.sin(th-math.pi/2-k*math.pi/6)) for k in range(1,6)]
+    bx,by=bez(p0,c1,c2,p3,1); ax,ay=bez(p0,c1,c2,p3,.96)
+    tip=[(bx+(bx-ax)*0.6,by+(by-ay)*0.6)]
+    pts=L_+tip+R_[::-1]+head
+    return _smooth(pts)
+def one(spec,mirror):
+    p0,c1,c2,p3,r,tail=spec
+    P=[(mir(p) if mirror else p) for p in (p0,c1,c2,p3)]
+    return comma(*P,r,tail)
+# Each eye is ONE comma stroke (round head + tail), after the hand sketches (D-31). left eye given, right = mirror unless given.
 EYES={
- # 1 lofty / stern: a long flat sweep on one side, a short hook on the other
- "stern":   dict(L=((98,67.5,3.7,4.3),((96,62.4),(91,59.6),(86,59.4),(79,61.2),3.4)), R=((122,67.5,3.7,4.3),((123,62),(126,57.2),(132,57.2),(137,62),2.8)), mouth="drop"),
- # 2 wry: small dots, tails rising outward
- "wry":     dict(L=((98,67,3.1,2.9),((95,64.2),(90,63),(85,61),(80,58.4),2.6)), R=None, mouth="dash"),
- # 3 firm: steeper V
- "firm":    dict(L=((98,67,3.0,2.8),((95.5,65),(90,63.4),(85,60.6),(80.5,56.6),2.6)), R=None, mouth="blob"),
- # 4 playful / kind: dots cupped by a curling hook
- "tender":  dict(L=((99,67.4,3.7,3.4),((96,62.6),(91,57.8),(85.5,60.4),(86.5,66.4),2.2,.5)), R=None, mouth="smile"),
- "serene":  dict(L=((99,67.6,3.6,3.2),((96,62.8),(91,58.6),(86,60.8),(86.5,66.2),2.0,.5)), R=None, mouth="soft"),
- "watchful":dict(L=((99,67.4,3.5,3.8),((96,62.4),(91.5,58.4),(86.5,60.4),(87,65.6),2.0,.5)), R=None, mouth="line"),
- # 5 wide-eyed: tall oval pupils with a small hook above
- "worried": dict(L=((99.5,68,2.9,5.0),((97.5,62),(95.5,57.4),(91,57.6),(89,61.6),2.0,.4)), R=None, mouth="oh"),
+ "stern":   dict(L=((98,67.5),(97,62),(90,59.2),(79,61),4.0,3.2), R=((122,67.5),(122,60),(128,56.6),(137,62),3.9,2.8), mouth="drop"),
+ "wry":     dict(L=((98,67),(95,65),(88,62.5),(80,58.4),3.1,2.4), R=None, mouth="dash"),
+ "firm":    dict(L=((98,67),(95.5,64.5),(88.5,61.6),(80.5,56.6),3.0,2.4), R=None, mouth="blob"),
+ "tender":  dict(L=((99,67.4),(97,60),(90,56.4),(85.4,64.6),3.7,2.4), R=None, mouth="smile"),
+ "serene":  dict(L=((99,67.6),(97,60.6),(90.5,57.4),(86,64.8),3.6,2.2), R=None, mouth="soft"),
+ "watchful":dict(L=((99,67.6),(97,60.4),(91,57.2),(86.6,64),3.5,2.2), R=None, mouth="line"),
+ "worried": dict(L=((99.5,68),(98.4,61.4),(94,56.6),(89,60.6),3.3,2.2), R=None, mouth="oh"),
 }
 MOUTHS={"smile":"M104 83.5C108 87.4 112 87.4 116 83.5C112 85.6 108 85.6 104 83.5Z","soft":"M105 84.2C108.5 86.6 111.5 86.6 115 84.2C111.5 85.6 108.5 85.6 105 84.2Z",
         "dash":"M105.5 85.5H114.5L114.5 86.4H105.5Z","line":"M105 85.5C108 85 112 85 115 85.5C112 86.1 108 86.1 105 85.5Z",
         "blob":ell(110,85.6,2.6,2.2),"drop":"M106.6 82.6C108.4 81 111.6 81 113.4 82.6C112.6 84.6 111.4 85.8 110 86.6C108.6 85.8 107.4 84.6 106.6 82.6Z",
         "oh":ell(110,86,2.7,3.8)}
 def face_parts(kind):
-    E=EYES[kind]; parts=[]
-    (dx,dy,rx,ry),tl=E["L"]; parts+= [dot(dx,dy,rx,ry,False),tail(tl,False)]
-    R=E["R"]
-    if R is None: parts+=[dot(dx,dy,rx,ry,True),tail(tl,True)]
-    else:
-        (rdx,rdy,rrx,rry),rtl=R; parts+=[ell(rdx,rdy,rrx,rry),brush(rtl[0],rtl[1],rtl[2],rtl[3],rtl[4],.15)]
+    E=EYES[kind]; parts=[one(E["L"],False), one(E["R"] if E["R"] else E["L"], E["R"] is None)]
     parts.append(MOUTHS[E["mouth"]])
     return [],parts
 def eyes(kind):
