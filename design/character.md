@@ -1,6 +1,6 @@
 # Nayom: character sheet (D-32)
 
-Rule: **head only, or full body. Never a floating head with a half body.**
+Rule (D-34): **head only, or waist-up (head, shoulders, torso, hands with the prop). No legs, no floating head.**
 - Head only: portraits and the app icon (stern, worried, wry, firm, hello, icon).
 - Full body: every scene (empty states). She is always standing or sitting on a surface, never floating.
 
