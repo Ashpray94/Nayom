@@ -172,7 +172,7 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
                 }
                 MotionEvent.ACTION_UP -> {
                     if (moved) { prefs.avatarX = headLp.x; prefs.avatarY = headLp.y }
-                    else { reactTo("click", 0); if (bubbleRoot.visibility == View.VISIBLE && actionsOn) dismissBubble() else show(summary(), 9000, null, true) }
+                    else { reactTo("click", 0); if (bubbleRoot.visibility == View.VISIBLE && actionsOn) dismissBubble() else explainBadges() }
                 }
             }
             true
@@ -218,7 +218,7 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
     fun show(text: String, ms: Long, tap: Intent?, actions: Boolean = false): Boolean = ui.post {
         if (hiddenByApp || prefs.headHidden) return@post
         tapIntent = tap; actionsOn = actions; bubbleText.text = text
-        if (!text.contains("mistake")) fixCol.visibility = View.GONE
+        if (!text.contains("mistake") && !text.contains("Mistakes")) fixCol.visibility = View.GONE
         val dm = resources.displayMetrics; val maxH = dm.heightPixels / 2
         bubbleText.measure(View.MeasureSpec.makeMeasureSpec(dm.widthPixels - dp(32), View.MeasureSpec.EXACTLY), View.MeasureSpec.UNSPECIFIED)
         scroll.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, minOf(bubbleText.measuredHeight, maxH))
@@ -256,7 +256,7 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
         if (kind != "video") lastInput = System.currentTimeMillis()
         if (kind == "typing") lastType = System.currentTimeMillis()
         if (kind == "scroll") { val tt = System.currentTimeMillis()
-            if (fgPkg != swipePkg || tt - lastSwipe > 5 * 60_000) { swipePkg = fgPkg; swipes = 0 }
+            if (fgPkg != swipePkg || tt - lastSwipe > 5 * 60_000) { swipePkg = fgPkg; swipes = 0; swipeSince = tt }
             lastSwipe = tt; swipes++
             scrollLvl = if (swipes >= 40) 3 else if (swipes >= 20) 2 else if (swipes >= 8) 1 else 0
             counter?.apply { text = swipes.toString(); visibility = if (swipes >= 3) View.VISIBLE else View.GONE
@@ -332,19 +332,36 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
     // ---- mistakes: red numbered badges
     private var badge: TextView? = null
     private lateinit var fixCol: LinearLayout
-    fun showFixes(list: List<String>) = ui.post {
-        badge?.apply { visibility = if (list.isEmpty()) View.GONE else View.VISIBLE; text = list.size.toString() }
+    private var lastFixes = listOf<String>()
+    private var swipeSince = 0L
+    private fun fillFixes(list: List<String>) {
         fixCol.removeAllViews()
-        if (list.isEmpty() || headRoot.visibility != View.VISIBLE) return@post
         list.forEachIndexed { i, m ->
             fixCol.addView(LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(16), dp(4), dp(16), dp(4))
                 addView(TextView(context).apply { text = "${i + 1}"; setTextColor(0xFFFFFFFF.toInt()); textSize = 12f; typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.CENTER
                     background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(0xFFD93025.toInt()) }; layoutParams = LinearLayout.LayoutParams(dp(22), dp(22)) })
                 addView(TextView(context).apply { text = m; setTextColor(0xFF0F2E2C.toInt()); textSize = 15f; setPadding(dp(10), 0, 0, 0) }) })
         }
-        fixCol.visibility = View.VISIBLE
+        fixCol.visibility = if (list.isEmpty()) View.GONE else View.VISIBLE
+    }
+    fun showFixes(list: List<String>) = ui.post {
+        lastFixes = list
+        badge?.apply { visibility = if (list.isEmpty()) View.GONE else View.VISIBLE; text = list.size.toString() }
+        fixCol.removeAllViews()
+        if (list.isEmpty() || headRoot.visibility != View.VISIBLE) return@post
+        fillFixes(list)
         show("${list.size} mistake${if (list.size > 1) "s" else ""}. Fix them before you send.", 9000, null)
         setFace("stern", 3000)
+    }
+    /** Tap on the head: say exactly what each badge on it is counting. */
+    private fun explainBadges() {
+        val h = app.nayom.data.Habits(this); val parts = mutableListOf<String>()
+        if (swipes >= 3) parts += "Orange/red number: $swipes swipes in ${h.label(swipePkg)} since ${java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault()).format(java.util.Date(swipeSince))}. Only real flicks that moved the screen count. Slow drags and wiggles do not."
+        if (lastFixes.isNotEmpty()) parts += "Red badge: ${lastFixes.size} mistake${if (lastFixes.size > 1) "s" else ""} in what you last typed:"
+        if (parts.isEmpty()) { show(summary(), 9000, null, true); return }
+        if (lastFixes.isNotEmpty()) fillFixes(lastFixes)
+        show(parts.joinToString("\n\n") + (if (lastFixes.isNotEmpty()) "\n(Mistakes mean spelling and sloppy writing, listed below.)" else ""), 14000, null, true)
+        if (lastFixes.isNotEmpty()) fixCol.visibility = View.VISIBLE
     }
     private val backToMe = Runnable {
         if (!typeMode) return@Runnable
