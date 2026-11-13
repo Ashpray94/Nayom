@@ -41,6 +41,7 @@ class OverlayService : Service() {
         @Volatile var fgPkg: String = ""
         fun say(text: String, ms: Long = 0, tap: Intent? = null) { instance?.show(text, ms, tap, false) }
         fun appHidden(h: Boolean) { instance?.setAppHidden(h) }
+        fun mood(face: String, ms: Long = 3000) { instance?.ui?.post { instance?.setFace(face, ms) } }
         fun react(kind: String, dir: Int = 0) { instance?.reactTo(kind, dir) }
         fun look(x: Int, y: Int) { instance?.lookAt(x, y) }
         fun typing(l: Int, t: Int, r: Int, caret: Int) { instance?.typingAt(l, t, r, caret) }
@@ -57,9 +58,10 @@ class OverlayService : Service() {
     private var anger = 0
     private var face = "calm"
     private val faceRes = mapOf("calm" to R.drawable.head_calm, "happy" to R.drawable.head_happy, "stern" to R.drawable.head_stern,
-        "angry" to R.drawable.head_angry, "worried" to R.drawable.head_worried, "sleepy" to R.drawable.head_sleepy)
+        "angry" to R.drawable.head_angry, "rage" to R.drawable.head_rage, "sad" to R.drawable.head_sad,
+        "dl" to R.drawable.head_look_dl, "dc" to R.drawable.head_look_dc, "dr" to R.drawable.head_look_dr, "worried" to R.drawable.head_worried, "sleepy" to R.drawable.head_sleepy)
     private fun baseFace(): String { val h = java.time.LocalTime.now().hour
-        return if (anger >= 2) "angry" else if (anger == 1) "stern" else if (h >= 23 || h < 5) "sleepy" else "calm" }
+        return if (anger >= 3) "rage" else if (anger >= 2) "angry" else if (anger == 1) "stern" else if (h >= 23 || h < 5) "sleepy" else "calm" }
     /** Swaps the face with a quick cross-fade; returns to her resting face after holdMs. */
     fun setFace(name: String, holdMs: Long = 0) {
         if (name != face) {
@@ -80,7 +82,7 @@ class OverlayService : Service() {
     private lateinit var bubbleLp: WindowManager.LayoutParams
     private var bubbleUp = false
     private lateinit var prefs: Prefs
-    private val ui = Handler(Looper.getMainLooper())
+    internal val ui = Handler(Looper.getMainLooper())
     private val warned = mutableSetOf<String>()
     private var hiddenByApp = false
     private var tapIntent: Intent? = null
@@ -252,7 +254,7 @@ class OverlayService : Service() {
         when (kind) {
             "scroll" -> pose(0f, if (dir >= 0) -20f else 20f, 0f, 140, 450)          // nods up/down with the content
             "notify" -> { setFace("worried", 1600); pose(0f, -24f, 0f, 200, 900) }                                  // looks up at the notification
-            "warn" -> { setFace(if (anger >= 2) "angry" else "stern", 2400); head.animate().rotationY(-26f).setDuration(150).withEndAction { head.animate().rotationY(26f).setDuration(260).withEndAction { head.animate().rotationY(-18f).setDuration(220).withEndAction { head.animate().rotationY(0f).setDuration(260).start() }.start() }.start() }.start() } // slow "no"
+            "warn" -> { setFace(if (anger >= 3) "rage" else if (anger >= 2) "angry" else "stern", 2400); head.animate().rotationY(-26f).setDuration(150).withEndAction { head.animate().rotationY(26f).setDuration(260).withEndAction { head.animate().rotationY(-18f).setDuration(220).withEndAction { head.animate().rotationY(0f).setDuration(260).start() }.start() }.start() }.start() } // slow "no"
             "video" -> { watching = true; head.animate().rotationY(0f).rotationX(8f).setDuration(500).start() }
         }
     }
@@ -271,7 +273,7 @@ class OverlayService : Service() {
         if (level == anger) return@post; anger = level
         head.colorFilter = when (level) { 0 -> null
             1, 2 -> null
-            else -> android.graphics.PorterDuffColorFilter(0xFFFF9080.toInt(), android.graphics.PorterDuff.Mode.MULTIPLY) }
+            else -> null }
         setFace(baseFace())
         if (level >= 2) reactTo("warn", 0)
     }
@@ -286,13 +288,14 @@ class OverlayService : Service() {
         val caretX = (l + dp(16) + caret * dp(9)).coerceAtMost(r - dp(8))
         val look = ((caretX - cx).toFloat() / maxOf(1, (r - l) / 2)).coerceIn(-1f, 1f)
         head.cameraDistance = 12000f * resources.displayMetrics.density
-        head.animate().rotationY(look * 28f).translationX(look * dp(5)).setDuration(140).start()
+        head.animate().rotationY(look * 18f).translationX(look * dp(4)).setDuration(120).start()
+        setFace(if (look < -0.33f) "dl" else if (look > 0.33f) "dr" else "dc", 1800)
         ui.removeCallbacks(backToMe); ui.postDelayed(backToMe, 1800)
     }
     private val backToMe = Runnable {
         if (!typeMode) return@Runnable
         typeMode = false
-        head.animate().rotationY(0f).translationX(0f).setDuration(350).start()
+        head.animate().rotationY(0f).translationX(0f).setDuration(350).start(); setFace(baseFace())
         headLp.x = savedX; headLp.y = savedY; runCatching { wm.updateViewLayout(headRoot, headLp) }
     }
     private fun unwatch() { watching = false; head.animate().rotationX(0f).setDuration(300).start() }
@@ -326,7 +329,7 @@ class OverlayService : Service() {
                 show("${p.person}: ${p.what}. $m min left.", 0, Intent(this, MainActivity::class.java)) }
         }
         s.promises().lastOrNull { it.status == Status.Missed && it.id !in s.debriefed() }?.let {
-            if (warned.add("miss:${it.id}")) { reactTo("warn", 0); show("You missed ${it.person}'s ${it.what.lowercase()}. Come and tell me why.", 0, Intent(this, MainActivity::class.java)) }
+            if (warned.add("miss:${it.id}")) { reactTo("warn", 0); setFace("sad", 6000); show("You missed ${it.person}'s ${it.what.lowercase()}. Come and tell me why.", 0, Intent(this, MainActivity::class.java)) }
         }
         habitsCheck()
         if (System.currentTimeMillis() - lastChatter > 25 * 60_000 && bubbleRoot.visibility != View.VISIBLE) { lastChatter = System.currentTimeMillis(); show(chatter.random(), 0, null) }
