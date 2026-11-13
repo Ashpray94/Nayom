@@ -7,8 +7,8 @@
     <path android:pathData="M99 102C90 114 82 130 80 152C77 180 92 205 122 213C146 219 166 209 166 193C166 182 156 177 150 183C146 187 148 193 154 195" android:strokeColor="#FF000000" android:strokeWidth="1.6" android:strokeLineCap="round" android:strokeLineJoin="round"/>
     <path android:pathData="M121 102C128 114 134 128 138 144C144 162 152 174 162 178" android:strokeColor="#FF000000" android:strokeWidth="1.6" android:strokeLineCap="round" android:strokeLineJoin="round"/>
     <path android:pathData="M121 110C147 116 153 144 133 160C123 168 108 166 97 158" android:strokeColor="#FF000000" android:strokeWidth="1.6" android:strokeLineCap="round" android:strokeLineJoin="round"/>
-    <path android:pathData="M82.7 67.2C88.3 61.0 93.3 62.2 97.7 62.6C100.9 62.9 103.0 65.5 102.8 67.0C102.6 69.3 100.0 70.6 97.0 70.2C92.5 69.7 87.6 68.2 82.7 67.2Z" android:fillColor="#FF000000"/>
-    <path android:pathData="M130.9 62.9C124.2 57.9 119.6 59.9 115.3 61.1C112.2 62.0 110.6 64.8 111.0 66.3C111.6 68.5 114.4 69.3 117.3 68.4C121.6 67.2 126.2 64.8 130.9 62.9Z" android:fillColor="#FF000000"/>
+    <path android:pathData="M79.1 68.6C84.6 68.1 92.2 62.7 98.2 63.5C101.3 63.8 102.0 66.0 101.9 67.5C101.7 69.7 100.1 70.9 97.9 70.7C94.7 70.4 90.6 67.8 79.1 68.6Z" android:fillColor="#FF000000"/>
+    <path android:pathData="M134.7 63.7C129.1 64.2 120.7 60.2 114.9 62.0C111.9 62.9 111.6 65.1 112.0 66.6C112.6 68.7 114.4 69.7 116.5 69.1C119.6 68.2 123.1 64.9 134.7 63.7Z" android:fillColor="#FF000000"/>
     <path android:pathData="M102.7 87.1C107.6 85.7 111.6 85.6 115.4 83.9C111.7 86.6 107.7 87.5 102.7 87.1Z" android:fillColor="#FF000000"/>
     </group>
 </vector>

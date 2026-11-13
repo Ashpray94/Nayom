@@ -22,13 +22,13 @@ BODY2="M121 102C128 114 134 128 138 144C144 162 152 174 162 178"
 def L(x): return 220-x   # mirror about the head's centre line
 def pth(pts): return pts
 def solid_eye(h, mirror, droop=0):
-    """A horizontal quote mark: round pupil end toward the nose, tapering tail to the outer corner."""
+    """Brush-drawn comma / apostrophe lying on its side: round head toward the nose, a thin tail sweeping out and up to the outer corner."""
     X=(lambda x: L(x)) if mirror else (lambda x: x)
-    r=1.6+h*.42; cy=64.6
-    return (f"M{X(86)} 66.8C{X(91)} {cy-r-.6:.1f} {X(96)} {cy-r:.1f} {X(100.5)} {cy-r:.1f}"
-            f"C{X(103.6)} {cy-r:.1f} {X(106)} {cy-r*.4:.1f} {X(106)} {cy}"
-            f"C{X(106)} {cy+r*.6:.1f} {X(103.6)} {cy+r:.1f} {X(100.5)} {cy+r:.1f}"
-            f"C{X(96)} {cy+r:.1f} {X(91)} 67.4 {X(86)} 66.8Z")
+    r=2.0+h*.32; cx=101.5; cy=65.2
+    return (f"M{X(82.5)} 68.6C{X(88)} 67.6 {X(95)} {cy-r*.55-1.8:.1f} {X(cx-.5)} {cy-r:.1f}"
+            f"C{X(cx+r*.75)} {cy-r:.1f} {X(cx+r)} {cy-r*.45:.1f} {X(cx+r)} {cy:.1f}"
+            f"C{X(cx+r)} {cy+r*.6:.1f} {X(cx+r*.6)} {cy+r:.1f} {X(cx)} {cy+r:.1f}"
+            f"C{X(cx-r*.9)} {cy+r:.1f} {X(94)} 66.6 {X(82.5)} 68.6Z")
 def solid_brow(yo,yi,mirror,t=2.4,arch=4):
     X=(lambda x: L(x)) if mirror else (lambda x: x)
     return (f"M{X(85)} {yo}C{X(91)} {yo-arch} {X(98)} {yi-arch} {X(104)} {yi}"
