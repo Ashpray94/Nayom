@@ -252,7 +252,7 @@ class OverlayService : Service() {
 
     // ---- habits: what you usually do, and how long
     private fun habitsCheck() {
-        val h = app.nayom.data.Habits(this); val pkg = Habits_cur(); val ms = h.currentMs(); val min = (ms / 60000).toInt()
+        val h = app.nayom.data.Habits(this); val pkg: String = Habits_cur(); val ms: Long = h.currentMs(); val min: Int = (ms / 60000).toInt()
         if (pkg != wasteApp) { wasteApp = pkg; wasteLevel = 0 }
         val name = h.label(pkg)
         if (app.nayom.data.Habits.waster(pkg) && min >= 10 * (wasteLevel + 1)) {
@@ -268,7 +268,7 @@ class OverlayService : Service() {
         if (hr != lastExpectHr) { lastExpectHr = hr
             h.expectedNow(hr)?.let { e -> if (e != pkg && app.nayom.data.Habits.waster(e)) show("Around now you open ${h.label(e)} for about ${h.usualMin(e)} min. Not today.", 0, null) } }
     }
-    private fun Habits_cur() = app.nayom.data.Habits.cur
+    private fun Habits_cur(): String = app.nayom.data.Habits.cur
 
     // ---- calls
     private fun watchCalls() {
