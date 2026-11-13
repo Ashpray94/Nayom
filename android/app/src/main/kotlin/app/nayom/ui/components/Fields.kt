@@ -68,7 +68,7 @@ fun Illustration(name: String, accent: androidx.compose.ui.graphics.Color, size:
 fun Empty(art: String, accent: androidx.compose.ui.graphics.Color, line: String, sentence: String, modifier: Modifier = Modifier) =
     Column(modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Illustration(art, accent)
+        Illustration(art, accent, 340)
         Text(line, style = NayomType.display.copy(fontSize = 38.sp, lineHeight = 44.sp), color = colors.ink, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
         Text(sentence, style = NayomType.body, color = colors.muted, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             modifier = Modifier.padding(horizontal = 24.dp))
