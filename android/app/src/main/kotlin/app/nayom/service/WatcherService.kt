@@ -65,6 +65,8 @@ class WatcherService : AccessibilityService() {
                 OverlayService.react("typing")
                 runCatching { val b = android.graphics.Rect(); e.source?.getBoundsInScreen(b); if (!b.isEmpty) OverlayService.typing(b.left, b.top, b.right, b.bottom, e.text.joinToString("").take(e.fromIndex + e.addedCount)) }
                 val text = e.text.joinToString("").trim()
+                fixPending?.let { ui.removeCallbacks(it) }
+                fixPending = Runnable { if (text.length >= 3) fixer.check(text) else OverlayService.fixes(emptyList()) }.also { ui.postDelayed(it, 350) }
                 if (text.isEmpty()) { OverlayService.fixes(emptyList()); lastText = ""; return }
                 if (text == lastText || Blocked.text(text)) return
                 lastText = text
@@ -74,10 +76,10 @@ class WatcherService : AccessibilityService() {
         }
     }
 
+    private var fixPending: Runnable? = null
     private val fixer by lazy { app.nayom.data.Fixer(this) { OverlayService.fixes(it) } }
 
     private fun learn(app: String, text: String) {
-        if (text.length >= 4) fixer.check(text) else OverlayService.fixes(emptyList())
         val store = Vault.open(this)
         store.typed(app.substringAfterLast('.'), text)
         val hit = Detector.promise(text) ?: return

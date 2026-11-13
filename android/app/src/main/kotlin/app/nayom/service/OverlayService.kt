@@ -160,7 +160,7 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
         headLp = WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.TRANSLUCENT).apply { gravity = Gravity.TOP or Gravity.END; x = prefs.avatarX; y = prefs.avatarY }
+            PixelFormat.TRANSLUCENT).apply { gravity = Gravity.TOP or Gravity.END; x = prefs.avatarX; y = prefs.avatarY; softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING }
         var sx = 0f; var sy = 0f; var ox = 0; var oy = 0; var moved = false
         head.setOnTouchListener { _, e ->
             when (e.action) {
@@ -315,24 +315,14 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
     fun typingAt(l: Int, t: Int, r: Int, b: Int, before: String) = ui.post {
         if (headRoot.visibility != View.VISIBLE) return@post
         val dm = resources.displayMetrics
-        val hw = dp(64)
-        // anchor once per text box; growing/scrolling text must not make her jump
-        val newBox = !typeMode || kotlin.math.abs(t - anchorT) > dp(160) || kotlin.math.abs(l - anchorL) > dp(60)
-        if (newBox) {
-            if (!typeMode) { typeMode = true; savedX = headLp.x; savedY = headLp.y }
-            anchorL = l; anchorT = t
-            val left = (l - hw - dp(20)).coerceAtLeast(dp(4))
-            headLp.x = (dm.widthPixels - left - hw).coerceIn(0, dm.widthPixels - hw)
-            headLp.y = maxOf(dp(8), t - hw - dp(20))
-            runCatching { wm.updateViewLayout(headRoot, headLp) }
-        }
+        typeMode = true   // flag only: the head itself never moves
         val perLine = maxOf(8, (r - l - dp(32)) / dp(9))
         val lines = before.split('\n'); val col = lines.last().length % perLine
         val f = ((dp(16) + col * dp(9)).toFloat() / maxOf(1, r - l)).coerceIn(0f, 1f)   // 0 = left-most of the box, 1 = right-most
         val newLine = lines.size - 1 != lastLine; lastLine = lines.size - 1
         head.cameraDistance = 12000f * dm.density
         val look = f * 2f - 1f
-        head.animate().rotationY(look * 16f).translationX(look * dp(4)).setDuration(110).start()
+        head.animate().rotationY(look * 16f).setDuration(110).start()
         // a new line drops her eyes straight down for a moment, then the next characters pull them back to the cursor
         setFace(if (newLine && col < 3) "dc" else if (f < 0.33f) "dl" else if (f > 0.66f) "dr" else "dc", 1800)
         ui.removeCallbacks(backToMe); ui.postDelayed(backToMe, 1800)
@@ -345,7 +335,7 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
     private var lastFixes = listOf<String>()
     private var swipeSince = 0L
     private fun fillFixes(list: List<String>) {
-        (fixRoot.getChildAt(0) as TextView).text = "${list.size} MISTAKE${if (list.size > 1) "S" else ""} TO CORRECT"
+        (fixRoot.getChildAt(0) as TextView).text = "SPELLING & GRAMMAR · ${list.size} TO CORRECT"
         fixRows.removeAllViews()
         list.forEachIndexed { i, m ->
             fixRows.addView(LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(16), dp(5), dp(16), dp(5))
@@ -376,8 +366,7 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
     private val backToMe = Runnable {
         if (!typeMode) return@Runnable
         typeMode = false
-        head.animate().rotationY(0f).translationX(0f).setDuration(350).start(); setFace(baseFace())
-        headLp.x = savedX; headLp.y = savedY; runCatching { wm.updateViewLayout(headRoot, headLp) }
+        head.animate().rotationY(0f).setDuration(350).start(); setFace(baseFace())
     }
     private fun unwatch() { watching = false; head.animate().rotationX(0f).setDuration(300).start() }
 
