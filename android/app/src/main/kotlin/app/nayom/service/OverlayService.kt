@@ -53,8 +53,8 @@ class OverlayService : Service() {
     private lateinit var wm: WindowManager
     private lateinit var headRoot: LinearLayout
     private lateinit var head: ImageView
-    private lateinit var actTop: LinearLayout
-    private lateinit var actBottom: LinearLayout
+    private lateinit var actionsRoot: LinearLayout
+    private lateinit var actionsLp: WindowManager.LayoutParams
     private lateinit var scroll: ScrollView
     private var anger = 0
     private var scrollLvl = 0
@@ -183,15 +183,12 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
         val dm = resources.displayMetrics
         bubbleText = TextView(this).apply { setTextColor(0xFF0F2E2C.toInt()); textSize = 17f; setLineSpacing(0f, 1.15f); setPadding(dp(20), dp(18), dp(20), dp(18)) }
         scroll = ScrollView(this).apply { addView(bubbleText); isVerticalScrollBarEnabled = false }
-        fun row() = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.END; visibility = View.GONE; setPadding(dp(12), dp(8), dp(12), dp(8)) }
-        fun fill(r: LinearLayout) {
-            r.addView(pill("Open app") { dismissBubble(); startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) })
-            r.addView(pill("Messages") { dismissBubble(); startActivity(Intent(this, MainActivity::class.java).putExtra("route", "inbox").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) })
-            r.addView(pill("Hide head", 0xFFFFFFFF.toInt(), 0xFF22706A.toInt()) { dismissBubble(); prefs.headHidden = true; applyVisibility(); refreshNotification() })
-        }
-        actTop = row(); actBottom = row(); fill(actTop); fill(actBottom)
+        actionsRoot = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.END; visibility = View.GONE; setPadding(dp(4), dp(2), dp(4), dp(2))
+            addView(pill("Open app") { dismissBubble(); startActivity(Intent(this@OverlayService, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) })
+            addView(pill("Messages") { dismissBubble(); startActivity(Intent(this@OverlayService, MainActivity::class.java).putExtra("route", "inbox").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) })
+            addView(pill("Hide head", 0xFFFFFFFF.toInt(), 0xFF22706A.toInt()) { dismissBubble(); prefs.headHidden = true; applyVisibility(); refreshNotification() }) }
         fixCol = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; visibility = View.GONE; setPadding(0, 0, 0, dp(10)) }
-        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; addView(actTop); addView(scroll); addView(fixCol); addView(actBottom) }
+        val col = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; addView(scroll); addView(fixCol) }
         bubbleRoot = FrameLayout(this).apply {
             background = GradientDrawable().apply { setColor(0xFFFFFFFF.toInt()); cornerRadius = dp(24).toFloat(); setStroke(dp(1), 0x330F2E2C) }
             elevation = dp(10).toFloat(); visibility = View.GONE; addView(col)
@@ -201,13 +198,17 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT).apply { gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL }
         wm.addView(bubbleRoot, bubbleLp)
+        actionsLp = WindowManager.LayoutParams(dm.widthPixels - dp(32), WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            PixelFormat.TRANSLUCENT).apply { gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL }
+        wm.addView(actionsRoot, actionsLp)
     }
 
     // ---- show/hide
     private fun applyVisibility() = ui.post {
         val vis = if (hiddenByApp || prefs.headHidden) View.GONE else View.VISIBLE
         headRoot.visibility = vis
-        if (vis == View.GONE) { bubbleRoot.visibility = View.GONE }
+        if (vis == View.GONE) { bubbleRoot.visibility = View.GONE; actionsRoot.visibility = View.GONE }
     }
     fun setAppHidden(h: Boolean) { if (h != hiddenByApp) { hiddenByApp = h; applyVisibility() } }
 
@@ -234,16 +235,20 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
         if (bubbleRoot.visibility != View.VISIBLE) return
         val dm = resources.displayMetrics
         val below = typeMode || headLp.y < dm.heightPixels / 2
-        actTop.visibility = if (actionsOn && !below) View.VISIBLE else View.GONE
-        actBottom.visibility = if (actionsOn && below) View.VISIBLE else View.GONE
         bubbleRoot.measure(View.MeasureSpec.makeMeasureSpec(dm.widthPixels - dp(32), View.MeasureSpec.EXACTLY), View.MeasureSpec.UNSPECIFIED)
-        val h = bubbleRoot.measuredHeight
-        bubbleLp.y = if (typeMode) dp(36) else if (below) headLp.y + dp(70) else maxOf(dp(24), headLp.y - h - dp(6))
-        runCatching { wm.updateViewLayout(bubbleRoot, bubbleLp) }
+        val h = bubbleRoot.measuredHeight; val ah = if (actionsOn) dp(52) else 0
+        val by: Int; val ay: Int
+        if (typeMode) { by = dp(36); ay = by + h + dp(8) }
+        else if (below) { by = headLp.y + dp(70); ay = by + h + dp(8) }
+        else { by = maxOf(dp(24) + ah, headLp.y - h - dp(6)); ay = by - ah }
+        bubbleLp.y = by; runCatching { wm.updateViewLayout(bubbleRoot, bubbleLp) }
+        // the options live in their own strip, never inside the message box
+        actionsRoot.visibility = if (actionsOn) View.VISIBLE else View.GONE
+        if (actionsOn) { actionsLp.y = ay; runCatching { wm.updateViewLayout(actionsRoot, actionsLp) } }
     }
     private val hideBubble = Runnable { dismissBubble() }
     
-    private fun dismissBubble() { bubbleRoot.animate().alpha(0f).setDuration(180).withEndAction { bubbleRoot.visibility = View.GONE }.start() }
+    private fun dismissBubble() { actionsRoot.visibility = View.GONE; bubbleRoot.animate().alpha(0f).setDuration(180).withEndAction { bubbleRoot.visibility = View.GONE }.start() }
 
     // ---- reactions: the head moves differently for each thing you do
 
@@ -427,5 +432,5 @@ counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13
         }
     }
 
-    override fun onDestroy() { instance = null; breathing?.cancel(); ui.removeCallbacksAndMessages(null); runCatching { wm.removeView(headRoot); wm.removeView(bubbleRoot) }; super.onDestroy() }
+    override fun onDestroy() { instance = null; breathing?.cancel(); ui.removeCallbacksAndMessages(null); runCatching { wm.removeView(headRoot); wm.removeView(bubbleRoot); wm.removeView(actionsRoot) }; super.onDestroy() }
 }
