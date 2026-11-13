@@ -62,6 +62,8 @@ class OverlayService : Service() {
     private var tapIntent: Intent? = null
     private var lastChatter = System.currentTimeMillis()
     private var lastReact = 0L
+    private var lastType = 0L
+    private var savedY = -1
     @Volatile private var lastInput = System.currentTimeMillis()
     private var breathing: ValueAnimator? = null
     private var watching = false
@@ -154,7 +156,6 @@ class OverlayService : Service() {
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT).apply { gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL }
         wm.addView(bubbleRoot, bubbleLp)
-        breathe()
     }
 
     // ---- show/hide
@@ -163,7 +164,7 @@ class OverlayService : Service() {
         headRoot.visibility = vis
         if (vis == View.GONE) { bubbleRoot.visibility = View.GONE; menu.visibility = View.GONE }
     }
-    fun setAppHidden(h: Boolean) { hiddenByApp = h; applyVisibility() }
+    fun setAppHidden(h: Boolean) { if (h != hiddenByApp) { hiddenByApp = h; applyVisibility() } }
 
     // ---- bubble
     fun show(text: String, ms: Long, tap: Intent?) = ui.post {
@@ -173,6 +174,9 @@ class OverlayService : Service() {
         bubbleText.measure(View.MeasureSpec.makeMeasureSpec(dm.widthPixels - dp(32), View.MeasureSpec.EXACTLY), View.MeasureSpec.UNSPECIFIED)
         val h = minOf(bubbleText.measuredHeight, maxH)
         (bubbleRoot.getChildAt(0) as ScrollView).layoutParams = FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, h)
+        val typing = System.currentTimeMillis() - lastType < 10_000
+        if (typing) { if (savedY < 0) savedY = headLp.y; headLp.y = dp(36); runCatching { wm.updateViewLayout(headRoot, headLp) } }
+        else restoreHead()
         val headY = headLp.y
         bubbleLp.y = if (headY < dm.heightPixels / 2) headY + dp(76) else maxOf(dp(48), headY - h - dp(12))
         wm.updateViewLayout(bubbleRoot, bubbleLp)
@@ -183,17 +187,14 @@ class OverlayService : Service() {
         ui.removeCallbacks(hideBubble); ui.postDelayed(hideBubble, life)
     }
     private val hideBubble = Runnable { dismissBubble() }
-    private fun dismissBubble() { bubbleRoot.animate().alpha(0f).setDuration(180).withEndAction { bubbleRoot.visibility = View.GONE }.start() }
+    private fun restoreHead() { if (savedY >= 0) { headLp.y = savedY; savedY = -1; runCatching { wm.updateViewLayout(headRoot, headLp) } } }
+    private fun dismissBubble() { restoreHead(); bubbleRoot.animate().alpha(0f).setDuration(180).withEndAction { bubbleRoot.visibility = View.GONE }.start() }
 
     // ---- reactions: the head moves differently for each thing you do
-    private fun breathe() {
-        breathing?.cancel()
-        breathing = ValueAnimator.ofFloat(1f, 1.05f).apply { duration = 2200; repeatCount = ValueAnimator.INFINITE; repeatMode = ValueAnimator.REVERSE
-            addUpdateListener { if (!watching) { val v = it.animatedValue as Float; head.scaleX = v; head.scaleY = v } }; start() }
-    }
 
     fun reactTo(kind: String, dir: Int) = ui.post {
         if (kind != "video") lastInput = System.currentTimeMillis()
+        if (kind == "typing") lastType = System.currentTimeMillis()
         if (headRoot.visibility != View.VISIBLE) return@post
         val now = System.currentTimeMillis(); if (now - lastReact < 350 && kind != "notify") return@post; lastReact = now
         if (watching && kind != "video") unwatch()
@@ -204,10 +205,10 @@ class OverlayService : Service() {
             "click" -> head.animate().scaleX(0.84f).scaleY(0.84f).setDuration(70).withEndAction { head.animate().scaleX(1.12f).scaleY(1.12f).setDuration(120).withEndAction { head.animate().scaleX(1f).scaleY(1f).setDuration(120).start() }.start() }.start()
             "notify" -> head.animate().translationY(-dp(18).toFloat()).setDuration(120).withEndAction { head.animate().translationY(0f).setDuration(520).setInterpolator(BounceInterpolator()).start() }.start()
             "warn" -> head.animate().rotation(-14f).setDuration(70).withEndAction { head.animate().rotation(14f).setDuration(110).withEndAction { head.animate().rotation(-8f).setDuration(90).withEndAction { head.animate().rotation(0f).setDuration(90).start() }.start() }.start() }.start()
-            "video" -> { if (!watching) { watching = true; head.animate().scaleX(0.72f).scaleY(0.72f).alpha(0.55f).setDuration(400).start() } }
+            "video" -> { watching = true }
         }
     }
-    private fun unwatch() { watching = false; head.animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(300).start() }
+    private fun unwatch() { watching = false }
 
     // every few seconds: are you watching a video?
     private val mood = object : Runnable { override fun run() {
