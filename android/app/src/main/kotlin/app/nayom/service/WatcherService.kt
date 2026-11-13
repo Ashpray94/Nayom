@@ -19,11 +19,17 @@ class WatcherService : AccessibilityService() {
     private var pending: Runnable? = null
     private var lastText = ""
     private var lastScrollY = 0
-    private var lastIndex = -1
-    private var accDist = 0
-    private var lastDir = 0
-    private var lastCount = 0L
-    private var lastMoveAt = 0L
+    private var gStart = 0L; private var gLast = 0L; private var gY0 = 0; private var gY = 0; private var gIdx0 = -1; private var gIdx = -1
+    private val endGesture = Runnable { endGesture() }
+    private fun endGesture() {
+        val dm = resources.displayMetrics; val net = kotlin.math.abs(gY - gY0); val dur = maxOf(60L, gLast - gStart)
+        val screens = net.toFloat() / dm.heightPixels; val speed = screens * 1000f / dur
+        val changed = gIdx0 >= 0 && gIdx != gIdx0
+        val dir = if (gY >= gY0) 1 else -1
+        val swipe = changed || (screens >= 0.35f && speed >= 0.8f)
+        if (swipe) OverlayService.react("scroll", dir) else if (net > dp(40)) OverlayService.react("nod", dir)
+        runCatching { Vault.open(this).log("gesture", "${if (swipe) "swipe" else "drag"} ${(screens * 100).toInt()}% in ${dur}ms idx=${gIdx0}>${gIdx} app=${OverlayService.fgPkg}") }
+    }
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     override fun onAccessibilityEvent(e: AccessibilityEvent) {
@@ -39,17 +45,13 @@ class WatcherService : AccessibilityService() {
             }
             AccessibilityEvent.TYPE_VIEW_CLICKED -> if (!Blocked.app(p)) { runCatching { val b = android.graphics.Rect(); e.source?.getBoundsInScreen(b); if (!b.isEmpty) OverlayService.look(b.centerX(), b.centerY()) } }
             AccessibilityEvent.TYPE_VIEW_SCROLLED -> if (!Blocked.app(p)) {
-                // distance tracker: a swipe counts only after ~40% of the screen height has really moved
-                val dm = resources.displayMetrics; val now = System.currentTimeMillis()
-                val y = e.scrollY
-                var d = maxOf(kotlin.math.abs(if (android.os.Build.VERSION.SDK_INT >= 28) e.scrollDeltaY else 0), kotlin.math.abs(y - lastScrollY))
-                if (d == 0 && e.fromIndex != lastIndex) d = dm.heightPixels / 2          // pager/reels: one page flip, no pixel delta
-                val dir = if (y >= lastScrollY) 1 else -1
-                lastScrollY = y; lastIndex = e.fromIndex
-                if (now - lastMoveAt > 1200 || dir != lastDir) accDist = 0                  // a pause or a change of direction (wiggling) starts over
-                lastMoveAt = now; lastDir = dir; accDist += d
-                if (d > dp(40) && accDist + d > dp(60)) OverlayService.react("nod", dir)                            // small glance for any real movement
-                if (accDist >= dm.heightPixels * 0.40 && now - lastCount > 350) { accDist = 0; lastCount = now; OverlayService.react("scroll", dir) }
+                // A gesture = scroll events until 400 ms of quiet. It is judged on how it ENDED, not on the wiggles on the way:
+                //   SWIPE = a flick that changed the item (page/reel index changed) or travelled >= 35% of the screen at >= 0.8 screens/s
+                //   DRAG  = anything slower or shorter, including moving and coming back. Drags never count.
+                val now = System.currentTimeMillis(); val y = e.scrollY
+                if (now - gLast > 400) { gStart = now; gY0 = y; gIdx0 = e.fromIndex }
+                gLast = now; gY = y; gIdx = e.fromIndex
+                ui.removeCallbacks(endGesture); ui.postDelayed(endGesture, 400)
             }
             AccessibilityEvent.TYPE_NOTIFICATION_STATE_CHANGED -> OverlayService.react("notify")
             AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED -> {
