@@ -42,6 +42,7 @@ class OverlayService : Service() {
         fun say(text: String, ms: Long = 0, tap: Intent? = null) { instance?.show(text, ms, tap, false) }
         fun appHidden(h: Boolean) { instance?.setAppHidden(h) }
         fun react(kind: String, dir: Int = 0) { instance?.reactTo(kind, dir) }
+        fun look(x: Int, y: Int) { instance?.lookAt(x, y) }
         fun typing(l: Int, t: Int, r: Int, caret: Int) { instance?.typingAt(l, t, r, caret) }
         fun start(ctx: Context) { ctx.startForegroundService(Intent(ctx, OverlayService::class.java)) }
         fun command(ctx: Context, action: String) { ctx.startForegroundService(Intent(ctx, OverlayService::class.java).setAction(action)) }
@@ -223,15 +224,29 @@ class OverlayService : Service() {
         if (headRoot.visibility != View.VISIBLE) return@post
         val now = System.currentTimeMillis(); if (now - lastReact < 350 && kind != "notify") return@post; lastReact = now
         if (watching && kind != "video") unwatch()
-        head.pivotX = head.width / 2f; head.pivotY = head.height.toFloat()
-        when (kind) {
-            "typing" -> {}
-            "scroll" -> head.animate().translationY(if (dir >= 0) dp(7).toFloat() else -dp(7).toFloat()).setDuration(120).withEndAction { head.animate().translationY(0f).setDuration(220).setInterpolator(OvershootInterpolator(2f)).start() }.start()
-            "click" -> head.animate().scaleX(0.84f).scaleY(0.84f).setDuration(70).withEndAction { head.animate().scaleX(1.12f).scaleY(1.12f).setDuration(120).withEndAction { head.animate().scaleX(1f).scaleY(1f).setDuration(120).start() }.start() }.start()
-            "notify" -> head.animate().translationY(-dp(18).toFloat()).setDuration(120).withEndAction { head.animate().translationY(0f).setDuration(520).setInterpolator(BounceInterpolator()).start() }.start()
-            "warn" -> head.animate().rotation(-14f).setDuration(70).withEndAction { head.animate().rotation(14f).setDuration(110).withEndAction { head.animate().rotation(-8f).setDuration(90).withEndAction { head.animate().rotation(0f).setDuration(90).start() }.start() }.start() }.start()
-            "video" -> { watching = true }
+        head.pivotX = head.width / 2f; head.pivotY = head.height * 0.7f
+        head.cameraDistance = 12000f * resources.displayMetrics.density
+        fun pose(ry: Float, rx: Float, rz: Float = 0f, ms: Long = 160, back: Long = 700) {
+            head.animate().rotationY(ry).rotationX(rx).rotation(rz).setDuration(ms).setInterpolator(android.view.animation.DecelerateInterpolator())
+                .withEndAction { head.animate().rotationY(0f).rotationX(0f).rotation(0f).setStartDelay(back).setDuration(380).start() }.start()
         }
+        when (kind) {
+            "scroll" -> pose(0f, if (dir >= 0) -20f else 20f, 0f, 140, 450)          // nods up/down with the content
+            "notify" -> pose(0f, -24f, 0f, 200, 900)                                  // looks up at the notification
+            "warn" -> head.animate().rotationY(-26f).setDuration(150).withEndAction { head.animate().rotationY(26f).setDuration(260).withEndAction { head.animate().rotationY(-18f).setDuration(220).withEndAction { head.animate().rotationY(0f).setDuration(260).start() }.start() }.start() }.start() // slow "no"
+            "video" -> { watching = true; head.animate().rotationY(0f).rotationX(8f).setDuration(500).start() }
+        }
+    }
+    /** Looks toward where you touched. */
+    fun lookAt(x: Int, y: Int) = ui.post {
+        if (headRoot.visibility != View.VISIBLE || typeMode) return@post
+        val dm = resources.displayMetrics
+        val cx = dm.widthPixels - headLp.x - dp(32); val cy = headLp.y + dp(32)
+        val dx = ((x - cx).toFloat() / (dm.widthPixels / 2f)).coerceIn(-1f, 1f); val dy = ((y - cy).toFloat() / (dm.heightPixels / 2f)).coerceIn(-1f, 1f)
+        head.cameraDistance = 12000f * dm.density
+        head.pivotX = head.width / 2f; head.pivotY = head.height * 0.7f
+        head.animate().rotationY(dx * 30f).rotationX(-dy * 22f).setDuration(150)
+            .withEndAction { head.animate().rotationY(0f).rotationX(0f).setStartDelay(800).setDuration(400).start() }.start()
     }
     fun setAnger(level: Int) = ui.post {
         if (level == anger) return@post; anger = level
@@ -261,7 +276,7 @@ class OverlayService : Service() {
         head.animate().rotationY(0f).translationX(0f).setDuration(350).start()
         headLp.x = savedX; headLp.y = savedY; runCatching { wm.updateViewLayout(headRoot, headLp) }
     }
-    private fun unwatch() { watching = false }
+    private fun unwatch() { watching = false; head.animate().rotationX(0f).setDuration(300).start() }
 
     // every few seconds: are you watching a video?
     private val mood = object : Runnable { override fun run() {

@@ -31,7 +31,7 @@ class WatcherService : AccessibilityService() {
                 if (p != packageName) app.nayom.data.Habits(this).switchTo(p)
                 OverlayService.appHidden(p == packageName || p in prefs.hideIn)
             }
-            AccessibilityEvent.TYPE_VIEW_CLICKED -> if (!Blocked.app(p)) OverlayService.react("click")
+            AccessibilityEvent.TYPE_VIEW_CLICKED -> if (!Blocked.app(p)) { runCatching { val b = android.graphics.Rect(); e.source?.getBoundsInScreen(b); if (!b.isEmpty) OverlayService.look(b.centerX(), b.centerY()) } }
             AccessibilityEvent.TYPE_VIEW_SCROLLED -> if (!Blocked.app(p)) {
                 val y = e.scrollY; OverlayService.react("scroll", if (y >= lastScrollY) 1 else -1); lastScrollY = y
             }
