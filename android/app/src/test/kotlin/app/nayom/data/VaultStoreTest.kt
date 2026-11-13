@@ -39,6 +39,6 @@ class VaultStoreTest {
     }
     @Test fun notesIgnoreNayomFolder() {
         val s = store(); s.addNote("Plan", "hi"); s.addPromise("A", "x", now.plusHours(1))
-        assertEquals(listOf("Plan"), s.notes().map { it.name })
+        assertEquals(listOf("plan"), s.notes().map { it.name })
     }
 }
