@@ -65,3 +65,6 @@ This repo holds the spec only. The file set follows the usual product order, so 
 | D-22 | UI palette moves to the teal family; marigold becomes the Due-soon colour | Your answer, 13 Nov |
 | D-23 | Light mode is the default and the app never switches by itself | Your answer, 13 Nov |
 | D-24 | LAN-only mode in Private Folder is on by default | Your answer, 13 Nov |
+| D-25 | Type: Cormorant Garamond (headings only) with Sora (everything else); thin by default, bold only for urgency | Your direction, 13 Nov |
+| D-26 | Own icon set, 48 grid, 2.25 stroke, one idea and one charm detail per icon, added only when a screen needs one | Your direction, 13 Nov |
+| D-27 | UI style: calm mission-control layout. No illustration, mascot, grid or texture. One card per idea, one focal point per screen | Your direction, 13 Nov |

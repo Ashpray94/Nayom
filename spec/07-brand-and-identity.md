@@ -67,7 +67,7 @@ An original mark, not based on any existing symbol.
 
 - A lowercase "n" drawn as an arch, like a doorway or a sunrise, with a small check mark tucked under it.
 - Teal on the pale background, with ink for the wordmark. One-colour version in ink.
-- Wordmark in Nunito ExtraBold, lowercase "nayom".
+- Wordmark: "NAYOM" in Sora SemiBold, caps, wide tracking (+0.34em), as at the top of every screen (D-25). The app icon is still to be redrawn as a sleek robot mum (D-21 stands; the squarish head is dropped).
 - App icon (D-21, light version is the main one per D-23): a robot mum's head, hair in a bun, glowing dot-matrix eyes, in calm blue-tinted moss/teal. The arch-n stays as the wordmark's mark inside the app. Light and dark versions. Android needs an adaptive icon (foreground face, background solid).
 - Minimum size 24 px for the mark alone.
 

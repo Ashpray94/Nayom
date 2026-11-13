@@ -1,10 +1,10 @@
 # 06. Design language
 
-Owner role: visual / UI designer. Inputs: 04, 05, decision D-15 (warm, colourful, cheerful).
+Owner role: visual / UI designer. Inputs: 04, 05, D-15 (cheerful), D-22 to D-27. Reference screens: `/design/screens`.
 
 ## Principles
 
-1. **Warm, not soft.** Sunny colours, firm content. The look is cheerful; the words are plain and direct.
+1. **Calm look, firm words.** Thin type, quiet surfaces, mission-control layout (D-27). Bold appears only where urgency matters: status words and buttons.
 2. **A slip must never hide.** It uses colour, a shape and a word, never colour alone.
 3. **Three things, not thirty.** Today shows three tasks. Cards show one decision.
 4. **One face only: the icon.** She has a robot face on the app icon and nowhere else. Inside the app she is a voice and a colour, not a drawing. No mascot in cards, empty states or notifications.
@@ -34,7 +34,7 @@ Teal family (D-22). Light is the default (D-23). Contrast figures are measured v
 
 Rules:
 - Amber is never used for text on light backgrounds, only as a fill with `ink` text.
-- Teal, leaf and sky are close in brightness (contrast 1.01 to 1.11 between them). A state is never shown by colour alone: Kept carries a check icon and the word "Kept"; Missed carries the "!" shape, a thick left bar and the word "Missed"; Care carries the heart icon.
+- Teal, leaf and sky are close in brightness (contrast 1.01 to 1.11 between them). A state is never shown by colour alone: Kept carries a check icon and the word "Kept"; Missed carries the "!" icon and the word "Missed"; Care carries the heart icon.
 - Amber and berry are also close (3.08), so Due soon carries a clock icon and its time.
 
 ## Colour tokens: dark
@@ -53,47 +53,63 @@ Rules:
 
 Appearance setting: Light (default), Dark, Follow phone. Nayom starts in Light and never switches on its own (D-23). It does not ask for location, so it cannot time dark by sunset.
 
-## Type
+## Type (D-25)
 
-Family: Nunito (open licence, rounded, friendly), bundled in the app. Numbers use tabular figures so due times line up.
+Two families, both Google Fonts, bundled in the app (no network fetch).
 
-| Style | Size / line | Weight | Use |
-| --- | --- | --- | --- |
-| Display | 32 / 40 | ExtraBold | Date on Today |
-| Title | 22 / 28 | Bold | Card headings |
-| Body | 16 / 24 | Regular | Everything else |
-| Label | 14 / 20 | SemiBold | Buttons, chips |
-| Caption | 12 / 16 | Regular | Evidence line, timestamps |
+- **Cormorant Garamond** (serif, thin, calligraphic): headings only. Regular and italic. Roman for firm moments ("Hold on.", "Missed."), italic for warm ones (date on Today and Evening).
+- **Sora** (sans, geometric, futuristic): everything else. Regular (400) for body, 200 for large numerals, 700 for urgency (status words, buttons).
 
-Layouts must hold at 200% font size and at 30% longer text, because Hinglish is often longer than English.
+| Style | Family | Size / line | Weight | Use |
+| --- | --- | --- | --- | --- |
+| Hero | Cormorant, roman | 72 / 72 | 500 | Gate and Slip title |
+| Display | Cormorant, italic | 46 / 48 | 500 | Date on Today and Evening |
+| Heading | Cormorant, roman | 56 / 58 | 500 | Setup step title |
+| Numeral | Sora | 56 to 88 | 200 | Countdown, "2 of 3", "42 min" |
+| Body | Sora | 16 to 18 / 1.45 | 400 | Everything else |
+| Status | Sora, caps, +0.16em | 11 | 700 | MISSED, KEPT, DUE, AT RISK |
+| Label | Sora, caps, +0.18em | 11 | 400 | Card labels, tab names, links |
+| Button | Sora, caps, +0.2em | 13 | 700 filled, 400 outline | CTAs |
 
-## Space, shape, depth
+Rules: no more than one serif element per screen. Numerals use tabular figures. Layouts hold at 200% font size and with 30% longer text (Hinglish).
 
-- 4-point grid. Common steps: 4, 8, 12, 16, 24, 32.
-- Screen edge padding 16. Card padding 16. Gap between cards 12.
-- Radius: cards 16, sheets 24, buttons 999 (pill), chips 999.
-- Depth: flat. A 1-point warm outline `#E8D9C3` in light mode, `#3A2E22` in dark.
-- Minimum touch target 48 × 48.
-- Primary buttons sit in the bottom third of the screen for one-hand use.
+## Surfaces and shape (D-27)
 
-## Icons
+- Background is a flat gradient. No grid, no texture, no illustration, no mascot.
+- Group content in one **card** per idea: radius 22, padding 24 (list cards 4 × 20). Light: white, soft shadow. Dark: 5% white fill with a 1-point inset line.
+- Inside a card, separate items with a 1-point hairline, not more boxes.
+- Screen edge padding 28. Cards align to the same edge as the text above them.
+- Buttons: radius 6, height 56, full width, caps label. Primary is filled teal. Secondary is outline. Disabled is 45% opacity.
+- Status icons sit in a 44 square tile, radius 12, tinted with the status colour at 13%.
+- Each screen has one focal point: a hero number or a hero word.
+- Minimum touch target 48 × 48. Primary buttons sit in the bottom third.
 
-Rounded outline set, 24 size, 2 stroke. The Private Folder service already ships Material icons, so the same family is used here.
+## Icons (D-26)
 
-| Meaning | Icon |
-| --- | --- |
-| Missed | Triangle with "!" |
-| Kept | Check in circle |
-| Due soon | Clock |
-| Care | Heart |
-| Private | Eye with a line |
-| Pause | Two bars |
-| Support | Phone |
+Own icon set, drawn for Nayom, not a pack. Files in `/design/icons/svg`.
+
+- Grid 48, live area 40, stroke 2.25 (matches Sora's line weight at 24 px), round caps and joins, corner radius about 5.
+- Active tab version: same icon with a 16% tint fill.
+- One idea per icon, with one charm detail. Add an icon only when a screen needs it.
+
+| Icon | Meaning | Idea |
+| --- | --- | --- |
+| today | Today tab | Sunrise: the day beginning |
+| promises | Promises tab | Open hand offering a heart |
+| people | People tab | Me in front, another behind |
+| notes | Notes tab | Note with a pencil |
+| mic | Debrief | Capsule with grille and stand |
+| check | Kept | Check in a circle |
+| missed | Missed, at risk | "!" in a circle |
+| clock | Due soon | Stopwatch with the time left shaded |
+| shield | Never read, private | Shield with keyhole |
+
+Bottom bar: four tabs (Today, Promises, People, Notes), icon above label, active tab in teal with the tinted icon.
 
 ## Motion
 
 - Standard duration 200 ms, ease-out. Cards slide up from the bottom.
-- The gate pause is a ring that fills over 5 seconds. With reduced motion on, the ring becomes a number counting 5 to 1.
+- The gate pause is a thin line that fills over 5 seconds, with the text "Yes and Later unlock in N s". With reduced motion on, the line is replaced by the number counting 5 to 1.
 - One firm haptic tick when a full-screen card appears. No sound.
 - Nothing bounces or wiggles.
 
@@ -103,17 +119,25 @@ default, pressed, disabled, focused (2-point sky ring), loading (loader icon swa
 
 ## Key screens in detail
 
+Reference renders, light and dark: `/design/screens`.
+
+### Today (S-01)
+Date in italic serif, then one hero card: the next promise, its countdown in thin numerals, due time. Below it one list card with missed and kept items, each with a tinted icon tile and a status word. Debrief is a filled button with the mic icon. Bottom bar with four tabs.
+
 ### Gate card (I-01), full screen
-1. Top: Title "Hold on." (see 13), then the ask in one line: "Ravi · Banner tweak · Today".
-2. Middle: a leaf or berry strip. "Open and due in 48 h: 3". "Pushes out: Meena's file, 17:00" in a berry-tint box with the "!" icon.
-3. Bottom: three buttons, full width, stacked: Yes, Later, No. All disabled for 5 seconds with the ring above them. A fourth text link: "Why am I seeing this".
+1. "Hold on." in the hero serif. One line: "Ravi asks: Banner tweak, today."
+2. One card with two facts: "3 promises due in 48 h", and "Pushes out Meena's file, 17:00 · AT RISK" with the missed icon tile.
+3. A thin 5 second line with "Yes and Later unlock in 3 s". Buttons stacked: Yes and Later (outline, disabled until unlocked), No (filled). Text link "Why am I seeing this".
 4. Back gesture is ignored for 5 seconds.
 
 ### Slip card (I-02)
-Same shell. Berry bar on the left. Title "Missed". One line of fact. One line of evidence in Caption. Two buttons: "Fix it by…" and "Release". A text link "Wrong" opens S-20.
+"Missed." in the hero serif. One line of fact. One card: "Late" with the number in thin numerals ("42 min"), a hairline, one evidence line in Body ("No file saved or sent since 09:15"). Buttons: "Fix it by…" (filled), "Release" (outline). Text link "Wrong" opens S-20.
 
-### Today (S-01)
-Display date and day at top. Three task cards under it, each with a person chip, a due time and a state colour. One care card in sky-tint at the bottom. A round Debrief button, teal, bottom right.
+### Evening sheet
+Date in italic serif. One hero card: "Kept 2 of 3", a thin progress line and "9 of 11 this week". One card with three counts: Missed, Moved, Reflex yes. A closing line ("Phone down.") and a Done button.
+
+### Setup (F8)
+Six progress segments at the top. Step title in the serif. One sentence of what the permission does. One card "Never read" with the shield icon and the list of blocked app types. Buttons: Open settings, Back.
 
 ### Lock-screen widget (I-05)
 Date, day, the next due item and time. No private text, because a lock screen is public.
@@ -129,9 +153,9 @@ Date, day, the next due item and time. No private text, because a lock screen is
 
 | Component | Why it is new |
 | --- | --- |
-| Full-screen interrupt card with pause ring | No existing equivalent |
+| Full-screen interrupt card with pause line | No existing equivalent |
 | Today three-task stack | Specific to Nayom |
 | Proof wall entry | Specific to Nayom |
 | Heartbeat chip ("Reading: on") | Specific to the readers |
 
-Changes: Removed sunset timing for dark mode, because Nayom has no location permission.
+Changes: Removed sunset timing for dark mode, because Nayom has no location permission. D-25 to D-27 replaced Nunito, Material icons, the warm outline and the left-bar slip card.
