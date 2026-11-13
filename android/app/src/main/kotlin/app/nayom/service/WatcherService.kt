@@ -77,7 +77,7 @@ class WatcherService : AccessibilityService() {
     private val fixer by lazy { app.nayom.data.Fixer(this) { OverlayService.fixes(it) } }
 
     private fun learn(app: String, text: String) {
-        if (text.length >= 4) fixer.check(text)
+        if (text.length >= 4) fixer.check(text) else OverlayService.fixes(emptyList())
         val store = Vault.open(this)
         store.typed(app.substringAfterLast('.'), text)
         val hit = Detector.promise(text) ?: return
