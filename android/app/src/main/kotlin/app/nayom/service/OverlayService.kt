@@ -57,12 +57,15 @@ class OverlayService : Service() {
     private lateinit var actBottom: LinearLayout
     private lateinit var scroll: ScrollView
     private var anger = 0
+    private var scrollLvl = 0
+    private var swipes = 0; private var swipePkg = ""; private var lastSwipe = 0L
+    private var counter: TextView? = null
     private var face = "calm"
     private val faceRes = mapOf("calm" to R.drawable.head_calm, "happy" to R.drawable.head_happy, "stern" to R.drawable.head_stern,
         "angry" to R.drawable.head_angry, "rage" to R.drawable.head_rage, "sad" to R.drawable.head_sad,
         "dl" to R.drawable.head_look_dl, "dc" to R.drawable.head_look_dc, "dr" to R.drawable.head_look_dr, "worried" to R.drawable.head_worried, "sleepy" to R.drawable.head_sleepy)
     private fun baseFace(): String { val h = java.time.LocalTime.now().hour
-        return if (anger >= 3) "rage" else if (anger >= 2) "angry" else if (anger == 1) "stern" else if (h >= 23 || h < 5) "sleepy" else "calm" }
+        val e = maxOf(anger, scrollLvl); return if (e >= 3) "rage" else if (e >= 2) "angry" else if (e == 1) "stern" else if (h >= 23 || h < 5) "sleepy" else "calm" }
     /** Swaps the face with a quick cross-fade; returns to her resting face after holdMs. */
     fun setFace(name: String, holdMs: Long = 0) {
         if (name != face) {
@@ -149,7 +152,10 @@ class OverlayService : Service() {
             layoutParams = LinearLayout.LayoutParams(dp(64), dp(64)) }
         badge = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 12f; typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.CENTER; visibility = View.GONE
             background = GradientDrawable().apply { shape = GradientDrawable.OVAL; setColor(0xFFD93025.toInt()); setStroke(dp(2), 0xFFFFFFFF.toInt()) }; elevation = dp(10).toFloat() }
-        val headFrame = FrameLayout(this).apply { addView(head); addView(badge, FrameLayout.LayoutParams(dp(24), dp(24), Gravity.TOP or Gravity.END)) }
+counter = TextView(this).apply { setTextColor(0xFFFFFFFF.toInt()); textSize = 13f; typeface = Typeface.DEFAULT_BOLD; gravity = Gravity.CENTER; visibility = View.GONE
+            setPadding(dp(8), dp(2), dp(8), dp(2)); minWidth = dp(28); elevation = dp(10).toFloat() }
+        val headFrame = FrameLayout(this).apply { addView(head); addView(badge, FrameLayout.LayoutParams(dp(24), dp(24), Gravity.TOP or Gravity.END))
+            addView(counter, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM or Gravity.START)) }
         headRoot = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.END; addView(headFrame) }
         headLp = WindowManager.LayoutParams(WindowManager.LayoutParams.WRAP_CONTENT, WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
@@ -244,7 +250,14 @@ class OverlayService : Service() {
     fun reactTo(kind: String, dir: Int): Boolean = ui.post {
         if (kind != "video") lastInput = System.currentTimeMillis()
         if (kind == "typing") lastType = System.currentTimeMillis()
-        if (kind == "scroll") { val t = System.currentTimeMillis(); if (t - scrollWin > 90_000) { scrollWin = t; scrolls = 0 }; scrolls++
+        if (kind == "scroll") { val tt = System.currentTimeMillis()
+            if (fgPkg != swipePkg || tt - lastSwipe > 5 * 60_000) { swipePkg = fgPkg; swipes = 0 }
+            lastSwipe = tt; swipes++
+            scrollLvl = if (swipes >= 40) 3 else if (swipes >= 20) 2 else if (swipes >= 8) 1 else 0
+            counter?.apply { text = swipes.toString(); visibility = if (swipes >= 3) View.VISIBLE else View.GONE
+                background = GradientDrawable().apply { cornerRadius = dp(12).toFloat(); setColor(if (scrollLvl >= 2) 0xFFD93025.toInt() else if (scrollLvl == 1) 0xFFE8872E.toInt() else 0xFF22706A.toInt()); setStroke(dp(2), 0xFFFFFFFF.toInt()) } }
+            if (typeMode.not()) setFace(baseFace())
+            val t = tt; if (t - scrollWin > 90_000) { scrollWin = t; scrolls = 0 }; scrolls++
             if (scrolls >= 12 && t - lastDoom > 10 * 60_000) { lastDoom = t; scrolls = 0; reactTo("warn", 0)
                 show("That is a lot of swiping. You are doom scrolling. Put it down.", 0, null); setAnger(3)
                 runCatching { Vault.open(this).log("nag", "doomscroll in ${app.nayom.data.Habits.cur}") } } }
@@ -342,6 +355,7 @@ class OverlayService : Service() {
         val inVideo = videoApps.any { fgPkg.contains(it) } && System.currentTimeMillis() - lastInput > 6000 && am.isMusicActive
         if (inVideo) reactTo("video", 0) else if (watching) ui.post { unwatch() }
         angerCheck()
+        if (fgPkg != swipePkg && swipes > 0) { swipes = 0; scrollLvl = 0; counter?.visibility = View.GONE; setFace(baseFace()) }
         ui.postDelayed(this, 3000)
     } }
 
