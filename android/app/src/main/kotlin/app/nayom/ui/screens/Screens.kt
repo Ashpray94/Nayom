@@ -120,6 +120,9 @@ fun NewPromiseScreen(st: AppState, r: Route.NewPromise) {
         Title("New promise")
         Field("To whom", who, { who = it }); Field("What", what, { what = it })
         Label("By when")
+        val clash = remember(due, st.permTick) { runCatching { st.calendar.clash(opts[due].second) }.getOrNull() }
+        if (clash != null) Text("Your calendar already has \"${clash.title}\" at ${clash.start.format(hm)}. Pick a time you can really keep.", style = NayomType.body, color = colors.berry)
+        else if (st.busy >= 6) Text("Your next 12 hours are ${"%.0f".format(st.busy)} h booked. Be careful what you promise.", style = NayomType.body, color = colors.amber)
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             opts.chunked(2).forEachIndexed { row, pair -> Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 pair.forEachIndexed { i, o -> Chip(o.first, due == row * 2 + i) { due = row * 2 + i } } } }
@@ -255,11 +258,9 @@ fun SetupScreen(st: AppState) = Screen(scroll = true) {
     Card { IconLine(R.drawable.ic_check, colors.teal, "Everything is saved as files on this phone. Nothing leaves it.") }
     Card { Label("Vault folder"); Spacer(Modifier.height(8.dp)); Text(st.store.root.absolutePath, style = NayomType.body, color = colors.muted) }
     val ctx = androidx.compose.ui.platform.LocalContext.current
+    PermissionCentre(st)
     Button("Today's activity", false, Modifier.fillMaxWidth()) { st.loadActivity(); st.route = Route.Activity }
     Button("Show the intro again", false, Modifier.fillMaxWidth()) { st.replayIntro() }
-    Button("Allow message access", false, Modifier.fillMaxWidth()) {
-        ctx.startActivity(android.content.Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS").addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
-    }
 }
 
 @Composable
@@ -296,3 +297,42 @@ fun OnboardingScreen(st: AppState, step: Int) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) { Label("${step + 1} of 3") }
     }
 }
+
+
+@Composable
+fun PermissionCentre(st: AppState) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val prefs = remember { app.nayom.data.Prefs(ctx) }
+    st.permTick
+    val overlay = android.provider.Settings.canDrawOverlays(ctx)
+    val access = android.provider.Settings.Secure.getString(ctx.contentResolver, android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES).orEmpty().contains(ctx.packageName)
+    val listener = androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(ctx).contains(ctx.packageName)
+    val cal = st.calendar.allowed
+    val launcher = androidx.activity.compose.rememberLauncherForActivityResult(androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions()) { st.permTick++ }
+    fun open(action: String, uri: String? = null) = ctx.startActivity(android.content.Intent(action).apply { if (uri != null) data = android.net.Uri.parse(uri) }.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK))
+    Label("Nayom's powers")
+    Card {
+        Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+            PermRow("Floating head over every app", overlay, "Allow") { open(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION, "package:${ctx.packageName}") }
+            PermRow("Watch what I type", access, "Allow") { open(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS) }
+            PermRow("See my messages", listener, "Allow") { open("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS") }
+            PermRow("Calendar, calls and notifications", cal, "Allow") {
+                launcher.launch(arrayOf(android.Manifest.permission.READ_CALENDAR, android.Manifest.permission.WRITE_CALENDAR,
+                    android.Manifest.permission.READ_PHONE_STATE, android.Manifest.permission.POST_NOTIFICATIONS))
+            }
+        }
+    }
+    if (!access) Text("If Allow is greyed out: App info for Nayom, three-dot menu, Allow restricted settings. Then try again.", style = NayomType.body, color = colors.muted)
+    var on by remember { mutableStateOf(prefs.avatarOn) }
+    Button(if (on) "Hide the floating head" else "Show the floating head", false, Modifier.fillMaxWidth()) {
+        on = !on; prefs.avatarOn = on
+        if (on && overlay) app.nayom.service.OverlayService.start(ctx) else app.nayom.service.OverlayService.stop(ctx)
+    }
+}
+
+@Composable
+private fun PermRow(label: String, on: Boolean, cta: String, go: () -> Unit) =
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+        Column(Modifier.weight(1f)) { Text(label, style = NayomType.body, color = colors.ink) }
+        if (on) Label("On") else Box(Modifier.clickable(onClick = go).padding(8.dp)) { Label(cta) }
+    }

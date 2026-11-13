@@ -37,6 +37,9 @@ class AppState(app: Application) : AndroidViewModel(app) {
         get() = routeState
         set(v) { routeState = v; store.log("open", v::class.simpleName.orEmpty()) }
     var tab by mutableStateOf(0)
+    var permTick by mutableStateOf(0)
+    val calendar = CalendarBridge(app)
+    var busy by mutableStateOf(0.0); private set
     private val flag get() = java.io.File(store.root, "Nayom/.onboarded")
     var onboarded by mutableStateOf(java.io.File(store.root, "Nayom/.onboarded").exists()); private set
     fun finishOnboarding() { flag.parentFile?.mkdirs(); flag.writeText("1"); onboarded = true; store.log("onboarded"); route = Route.Home }
@@ -53,6 +56,7 @@ class AppState(app: Application) : AndroidViewModel(app) {
         store.sweepMissed()
         promises = store.promises(); people = store.people(); notes = store.notes()
         day = store.today(); debriefed = store.debriefed()
+        busy = runCatching { calendar.busyHours(ZonedDateTime.now()) }.getOrDefault(0.0)
     }
     val open get() = promises.filter { it.status == Status.Open }
     val next get() = open.firstOrNull()
@@ -60,7 +64,11 @@ class AppState(app: Application) : AndroidViewModel(app) {
     val unhandledMiss get() = promises.lastOrNull { it.status == Status.Missed && it.id !in debriefed }
 
     fun back() { route = Route.Home }
-    fun addPromise(who: String, what: String, due: ZonedDateTime) { store.addPromise(who, what, due); refresh(); back() }
+    fun addPromise(who: String, what: String, due: ZonedDateTime) {
+        store.addPromise(who, what, due)
+        runCatching { calendar.add("$what ($who)", due)?.let { store.log("calendar", "$what -> event $it") } }
+        refresh(); back()
+    }
     fun mark(id: String, s: Status, newDue: ZonedDateTime? = null) { store.setStatus(id, s, newDue); refresh(); back() }
     fun ask(from: String, what: String): String { val a = store.addAsk(from, what); refresh(); return a.id }
     fun decide(id: String, d: Decision) { store.decide(id, d); refresh() }

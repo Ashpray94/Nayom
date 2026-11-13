@@ -70,6 +70,14 @@ class VaultStore(val root: File, private val dev: String = "ph", private val zon
             .filter { it.startsWith("- ") }.map { it.removePrefix("- ").split(" | ", limit = 3) }
             .filter { it.size == 3 }.map { Entry(it[0], it[1], it[2]) }.reversed()
 
+    // ---- typed: what you wrote in other apps (skips passwords and banking). typed/<dev>/YYYY-MM-DD.md
+    fun typed(app: String, text: String) {
+        val now = clock()
+        val f = File(dir("typed/$dev"), now.toLocalDate().toString() + ".md")
+        if (!f.exists()) f.writeText("# ${now.toLocalDate()}\n\n")
+        f.appendText("- ${now.format(DateTimeFormatter.ofPattern("HH:mm:ss"))} | $app | ${text.trim().replace("\n", " ")}\n")
+    }
+
     // ---- inbox: messages that reached the phone (notification listener). inbox/<dev>/YYYY-MM-DD.md
     fun inbox(app: String, title: String, text: String) {
         val now = clock()
