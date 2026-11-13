@@ -22,14 +22,14 @@ BODY2="M121 102C128 114 134 128 138 144C144 162 152 174 162 178"
 def L(x): return 220-x   # mirror about the head's centre line
 def pth(pts): return pts
 def solid_eye(h, mirror, droop=0):
-    """A true comma lying on its side: round head toward the nose, a thin tail that bows downward and thins to a point at the outer corner."""
+    """Eye and brow in one stroke: a round pupil near the nose whose comma tail arcs up and out over it like an eyebrow."""
     X=(lambda x: L(x)) if mirror else (lambda x: x)
-    r=1.9+h*.26; cx=101.5; cy=64.6
-    return (f"M{X(82.5)} 66.4C{X(88)} {cy+r+3.4:.1f} {X(95)} {cy+r+3:.1f} {X(cx)} {cy+r:.1f}"
-            f"C{X(cx+r*.6)} {cy+r:.1f} {X(cx+r)} {cy+r*.55:.1f} {X(cx+r)} {cy:.1f}"
-            f"C{X(cx+r)} {cy-r*.6:.1f} {X(cx+r*.55)} {cy-r:.1f} {X(cx)} {cy-r:.1f}"
-            f"C{X(cx-r*.9)} {cy-r:.1f} {X(cx-r*1.15)} {cy-r*.1:.1f} {X(cx-r*1.15)} {cy+r*.15:.1f}"
-            f"C{X(94)} {cy+r*.9+1.2:.1f} {X(88)} {cy+r*.9+1.0:.1f} {X(82.5)} 66.4Z")
+    r=2.3+h*.24; cx=101.0; cy=66.5; lift=60.2-h*.25
+    return (f"M{X(83.5)} 63.6C{X(89)} {lift-1.2:.1f} {X(96)} {lift-1.4:.1f} {X(cx-r*.6)} {cy-r*.95:.1f}"
+            f"C{X(cx+r*.2)} {cy-r*1.05:.1f} {X(cx+r)} {cy-r*.6:.1f} {X(cx+r)} {cy:.1f}"
+            f"C{X(cx+r)} {cy+r*.7:.1f} {X(cx+r*.55)} {cy+r:.1f} {X(cx)} {cy+r:.1f}"
+            f"C{X(cx-r*.75)} {cy+r:.1f} {X(cx-r*1.05)} {cy+r*.3:.1f} {X(cx-r*1.05)} {cy-r*.1:.1f}"
+            f"C{X(97)} {lift+2.6:.1f} {X(90)} {lift+2.0:.1f} {X(83.5)} 63.6Z")
 def solid_brow(yo,yi,mirror,t=2.4,arch=4):
     X=(lambda x: L(x)) if mirror else (lambda x: x)
     return (f"M{X(85)} {yo}C{X(91)} {yo-arch} {X(98)} {yi-arch} {X(104)} {yi}"
